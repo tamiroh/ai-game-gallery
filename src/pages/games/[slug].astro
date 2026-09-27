@@ -1,0 +1,17 @@
+---
+import type { GetStaticPaths, InferGetStaticPropsType } from 'astro';
+import { games } from '../../lib/games';
+
+export const getStaticPaths = (() => games.map((game) => ({
+  params: { slug: game.slug },
+  props: { game },
+}))) satisfies GetStaticPaths;
+
+type Props = InferGetStaticPropsType<typeof getStaticPaths>;
+const { game } = Astro.props;
+const pages = import.meta.glob<{ default: import('astro/runtime/server/index.js').AstroComponentFactory }>(
+  '../../games/*/Game.astro',
+);
+const { default: Game } = await pages[`../../games/${game.slug}/Game.astro`]();
+---
+<Game />
