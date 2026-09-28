@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { Kit, random, trs, type ColorLike } from './kit';
+import { Kit, random, roundedRect, trs, type ColorLike } from './kit';
 import type { MaterialName } from './materials';
 import { CH, D, FL1, FL2, M, W } from './plan';
-import { bentBoard, duvet, puffy } from './soft';
+import { basin, bentBoard, duvet, leaf, puffy } from './soft';
 
 export interface Fixture { position: THREE.Vector3; floor: 1 | 2; intensity: number; range: number }
 
@@ -212,20 +212,34 @@ function television(kit: Kit, x: number, y: number, z: number, yaw: number) {
 
 export function plant(kit: Kit, x: number, y: number, z: number, height: number, seed: number, pot = 0xd9d3c7) {
   const rng = random(seed);
-  lathe(kit, 'satin', [[0, 0], [0.13, 0], [0.16, 0.3], [0.17, 0.32], [0.15, 0.32], [0.14, 0.3], [0, 0.29]], x, y, z, pot, 28);
-  cylinder(kit, 'matte', x, y + 0.28, z, 0.14, 0.14, 0.01, 0x3a2c22, 20);
-  const leaf = new THREE.PlaneGeometry(0.1, 0.16);
+  // Pot with a rolled rim, a saucer, and bark mulch on the soil.
+  lathe(kit, 'satin', [[0, 0.012], [0.125, 0.012], [0.155, 0.27], [0.172, 0.28], [0.175, 0.315], [0.16, 0.32], [0.152, 0.3], [0, 0.29]], x, y, z, pot, 36);
+  lathe(kit, 'satin', [[0, 0], [0.16, 0], [0.165, 0.014], [0.155, 0.016], [0, 0.006]], x, y, z, new THREE.Color(pot).multiplyScalar(0.92), 36);
+  cylinder(kit, 'matte', x, y + 0.28, z, 0.15, 0.15, 0.008, 0x3a2c22, 24);
+  for (let i = 0; i < 14; i++) {
+    const a = rng() * Math.PI * 2, r = rng() * 0.12;
+    kit.within(trs(x + Math.cos(a) * r, y + 0.29, z + Math.sin(a) * r, 0, rng() * 3, 0), () => kit.box('matte', -0.015, 0, -0.008, 0.015, 0.006, 0.008, 0x6b4a32));
+  }
+  // Stems curving up from the soil, leaves spiralling up each one on short stalks.
+  const green = new THREE.Color(0x3a6a2c);
+  const base = new THREE.Vector3(x, y + 0.29, z);
   for (let s = 0; s < 3; s++) {
-    const top = new THREE.Vector3(x + (rng() - 0.5) * 0.2, y + height * (0.75 + rng() * 0.25), z + (rng() - 0.5) * 0.2);
-    tube(kit, 'matte', [new THREE.Vector3(x, y + 0.29, z), new THREE.Vector3((x + top.x) / 2 + (rng() - 0.5) * 0.08, (y + 0.29 + top.y) / 2, (z + top.z) / 2), top], 0.012, 0x5b4636);
-    for (let i = 0; i < 70; i++) {
-      const t = 0.35 + rng() * 0.65;
-      const a = rng() * Math.PI * 2, r = 0.08 + rng() * 0.28 * t;
-      const p = new THREE.Vector3(x + (top.x - x) * t + Math.cos(a) * r, y + 0.29 + (top.y - y - 0.29) * t + (rng() - 0.3) * 0.2, z + (top.z - z) * t + Math.sin(a) * r);
-      kit.geometry('leaf', leaf, trs(p.x, p.y, p.z, -0.6 - rng() * 0.8, a, rng() - 0.5), new THREE.Color(0x3f6b2f).multiplyScalar(0.7 + rng() * 0.5), 'keep');
+    const top = new THREE.Vector3(x + (rng() - 0.5) * 0.24, y + height * (0.72 + rng() * 0.28), z + (rng() - 0.5) * 0.24);
+    const mid = new THREE.Vector3((x + top.x) / 2 + (rng() - 0.5) * 0.1, (base.y + top.y) / 2, (z + top.z) / 2 + (rng() - 0.5) * 0.1);
+    const curve = new THREE.QuadraticBezierCurve3(base, mid, top);
+    tube(kit, 'matte', curve.getPoints(6), 0.011 - s * 0.002, 0x5b4636);
+    const count = Math.round(height * 26);
+    for (let i = 0; i < count; i++) {
+      const t = 0.28 + (0.72 * (i + rng() * 0.5)) / count;
+      const p = curve.getPoint(Math.min(1, t));
+      const heading = i * 2.4 + s * 1.3 + rng() * 0.4;
+      const out = new THREE.Vector3(Math.sin(heading), 0.35, Math.cos(heading)).normalize();
+      const stalk = p.clone().addScaledVector(out, 0.035);
+      tube(kit, 'matte', [p, stalk], 0.003, 0x4f6a36);
+      const length = (0.13 + rng() * 0.08) * (1.1 - t * 0.35);
+      leaf(kit, stalk, heading, 0.55 - t * 0.35 + rng() * 0.3, (rng() - 0.5) * 0.7, length, length * 0.48, green.clone().multiplyScalar(0.75 + rng() * 0.45));
     }
   }
-  leaf.dispose();
   kit.solid(x - 0.2, z - 0.2, x + 0.2, z + 0.2, y, y + height);
 }
 
@@ -281,10 +295,21 @@ function kitchen(kit: Kit) {
 
   // Refrigerator.
   kit.at(3.64, y, 0.46, 0, () => {
-    rbox(kit, 'gloss', 0, 0.9, 0, 0.68, 1.8, 0.7, 0.02, 0xdfe0dc);
-    for (const yy of [0.62, 0.92, 1.12]) kit.box('matte', -0.34, yy, 0.35, 0.34, yy + 0.006, 0.352, 0x9c9d99);
-    kit.box('matte', 0, 1.12, 0.35, 0.002, 1.8, 0.352, 0x9c9d99);
-    for (const [hx, y0, y1] of [[-0.02, 1.2, 1.6], [0.02, 1.2, 1.6], [0, 0.85, 0.88], [0, 0.55, 0.58]] as const) kit.box('chrome', hx - 0.012 - (hx ? 0 : 0.1), y0, 0.352, hx + 0.012 + (hx ? 0 : 0.1), y1, 0.37, 0xbfc1c2);
+    const face = 0xe3e4e0;
+    // Cabinet behind the doors, dark gasket line, kick plate.
+    kit.box('satin', -0.34, 0.05, -0.35, 0.34, 1.8, 0.3, 0xd6d7d3);
+    kit.box('matte', -0.33, 0.05, 0.3, 0.33, 1.79, 0.312, 0x2a2b2c);
+    kit.box('matte', -0.33, 0, -0.3, 0.33, 0.05, 0.28, 0x1e1f20);
+    // French doors on top, three drawers below, each a separate bevelled panel.
+    for (const [x0, x1] of [[-0.34, -0.0015], [0.0015, 0.34]] as const) kit.box('gloss', x0, 1.125, 0.312, x1, 1.8, 0.35, face);
+    for (const [y0, y1] of [[0.925, 1.12], [0.625, 0.92], [0.05, 0.62]] as const) kit.box('gloss', -0.34, y0, 0.312, 0.34, y1, 0.35, face);
+    // Slim vertical pulls on the doors, recessed top-edge pulls on the drawers.
+    for (const s of [-1, 1]) rbox(kit, 'chrome', s * 0.03, 1.4, 0.362, 0.014, 0.32, 0.022, 0.006, 0xc4c6c7);
+    for (const yy of [1.105, 0.905, 0.605]) kit.box('matte', -0.25, yy - 0.012, 0.345, 0.25, yy, 0.351, 0x55575a);
+    // Touch panel on the right door and hinge caps on top.
+    kit.box('screen', 0.12, 1.5, 0.35, 0.22, 1.56, 0.352, 0x1b2024);
+    for (let i = 0; i < 3; i++) kit.box('lamp', 0.135 + i * 0.03, 1.525, 0.352, 0.145 + i * 0.03, 1.53, 0.353, 0x9fd3ff);
+    for (const s of [-1, 1]) rbox(kit, 'satin', s * 0.3, 1.805, 0.3, 0.06, 0.012, 0.06, 0.004, 0xcfd0cc);
     kit.solid(-0.35, -0.36, 0.35, 0.36, 0, 1.8);
   });
 
@@ -417,14 +442,17 @@ function living(kit: Kit, fixtures: Fixture[]) {
 }
 
 export function plantSmall(kit: Kit, x: number, y: number, z: number) {
-  lathe(kit, 'gloss', [[0, 0], [0.035, 0], [0.045, 0.08], [0.04, 0.09], [0, 0.085]], x, y, z, 0xefece4, 18);
-  const leaf = new THREE.PlaneGeometry(0.04, 0.07);
-  const rng = random(77);
-  for (let i = 0; i < 26; i++) {
-    const a = rng() * Math.PI * 2, r = rng() * 0.07;
-    kit.geometry('leaf', leaf, trs(x + Math.cos(a) * r, y + 0.1 + rng() * 0.1, z + Math.sin(a) * r, -0.5 - rng(), a, 0), new THREE.Color(0x4f7a3a).multiplyScalar(0.8 + rng() * 0.4), 'keep');
+  lathe(kit, 'gloss', [[0, 0], [0.035, 0], [0.045, 0.08], [0.047, 0.09], [0.042, 0.092], [0.04, 0.084], [0, 0.08]], x, y, z, 0xefece4, 24);
+  cylinder(kit, 'matte', x, y + 0.078, z, 0.04, 0.04, 0.004, 0x3a2c22, 16);
+  // A rosette of small arching leaves, the inner ones more upright.
+  const rng = random(Math.round(x * 97 + z * 31));
+  for (let i = 0; i < 22; i++) {
+    const inner = i / 22;
+    const heading = i * 2.4 + rng() * 0.3;
+    const p = new THREE.Vector3(x + Math.sin(heading) * 0.01, y + 0.085 + inner * 0.02, z + Math.cos(heading) * 0.01);
+    const length = 0.06 + (1 - inner) * 0.05 + rng() * 0.02;
+    leaf(kit, p, heading, 0.5 + inner * 0.7, (rng() - 0.5) * 0.4, length, length * 0.42, new THREE.Color(0x4f7a3a).multiplyScalar(0.75 + inner * 0.35 + rng() * 0.15));
   }
-  leaf.dispose();
 }
 
 // ——— Wet rooms ———
@@ -524,13 +552,15 @@ function bathroom(kit: Kit, fixtures: Fixture[]) {
   kit.box('gloss', x1 - 0.08, rimY - 0.02, z0, x1, rimY, tz1, white);
   // Basin: inward-facing walls and floor.
   const bx0 = x0 + 0.08, bx1 = x1 - 0.08, bz0 = z0 + 0.06, bz1 = tz1 - 0.08, by0 = rimY - 0.5, by1 = rimY - 0.02;
-  const inside = 0xe8eef0;
-  kit.quad('gloss', [[bx0, by0, bz1], [bx1, by0, bz1], [bx1, by0, bz0], [bx0, by0, bz0]], [[bx0, bz1], [bx1, bz1], [bx1, bz0], [bx0, bz0]], inside, [0, 1, 0]);
-  kit.quad('gloss', [[bx0, by0, bz0], [bx1, by0, bz0], [bx1, by1, bz0], [bx0, by1, bz0]], [[bx0, by0], [bx1, by0], [bx1, by1], [bx0, by1]], inside, [0, 0, 1]);
-  kit.quad('gloss', [[bx1, by0, bz1], [bx0, by0, bz1], [bx0, by1, bz1], [bx1, by1, bz1]], [[bx1, by0], [bx0, by0], [bx0, by1], [bx1, by1]], inside, [0, 0, -1]);
-  kit.quad('gloss', [[bx0, by0, bz1], [bx0, by0, bz0], [bx0, by1, bz0], [bx0, by1, bz1]], [[bz1, by0], [bz0, by0], [bz0, by1], [bz1, by1]], inside, [1, 0, 0]);
-  kit.quad('gloss', [[bx1, by0, bz0], [bx1, by0, bz1], [bx1, by1, bz1], [bx1, by1, bz0]], [[bz0, by0], [bz1, by0], [bz1, by1], [bz0, by1]], inside, [-1, 0, 0]);
-  kit.box('water', x0 + 0.08, rimY - 0.12, z0 + 0.06, x1 - 0.08, rimY - 0.115, tz1 - 0.08, 0xffffff);
+  basin(kit, 'gloss', (bx0 + bx1) / 2, (bz0 + bz1) / 2, bx1 - bx0, bz1 - bz0, by1 + 0.019, by1 + 0.019 - by0, 0.1, 0xe8eef0);
+  // Water surface follows the basin's rounded outline, a little in from the walls.
+  const water = new THREE.ShapeGeometry(roundedRect(bx1 - bx0 - 0.03, bz1 - bz0 - 0.03, 0.09), 6);
+  kit.geometry('water', water, trs((bx0 + bx1) / 2, rimY - 0.12, (bz0 + bz1) / 2, -Math.PI / 2, 0, 0), 0xffffff, 'keep');
+  water.dispose();
+  // Panel seams on the unit-bath walls.
+  for (const sx of [6.98, 7.58]) kit.box('matte', sx - 0.002, rimY, 0.1, sx + 0.002, FL1 + 2.2, 0.102, 0xc9c3b8);
+  kit.box('matte', 8.128, y, 0.95 - 0.002, 8.13, FL1 + 2.2, 0.95 + 0.002, 0xc9c3b8);
+  kit.box('matte', x0, FL1 + 1.4, 1.758, x1, FL1 + 1.404, 1.76, 0xc9c3b8);
   kit.solid(x0, z0, x1, tz1, y, rimY);
   // Wall controller, mixer, slide bar, shower head and hose.
   kit.at(x1, y, 1.3, -Math.PI / 2, () => {
@@ -737,15 +767,36 @@ function desk(kit: Kit, x: number, y: number, z: number, yaw: number, w: number,
 
 function officeChair(kit: Kit, x: number, y: number, z: number, yaw: number, color: number) {
   kit.at(x, y, z, yaw, () => {
+    const plastic = 0x262626;
+    // Five-star base on twin-wheel casters.
+    cylinder(kit, 'satin', 0, 0.075, 0, 0.045, 0.04, 0.05, plastic, 20);
     for (let i = 0; i < 5; i++) {
-      const a = (i / 5) * Math.PI * 2;
-      kit.within(trs(0, 0.06, 0, 0, a, 0), () => kit.box('satin', -0.015, 0, 0, 0.015, 0.03, 0.3, 0x2a2a2a));
-      cylinder(kit, 'matte', Math.sin(a) * 0.3, 0, Math.cos(a) * 0.3, 0.025, 0.025, 0.05, 0x1a1a1a, 10);
+      const a = (i / 5) * Math.PI * 2 + 0.3;
+      const tip = new THREE.Vector3(Math.sin(a) * 0.3, 0.075, Math.cos(a) * 0.3);
+      tube(kit, 'satin', [new THREE.Vector3(Math.sin(a) * 0.03, 0.1, Math.cos(a) * 0.03), new THREE.Vector3(Math.sin(a) * 0.16, 0.095, Math.cos(a) * 0.16), tip], 0.017, plastic);
+      rbox(kit, 'satin', tip.x, 0.07, tip.z, 0.04, 0.035, 0.04, 0.012, plastic);
+      kit.at(tip.x, 0, tip.z, a + 0.8, () => {
+        kit.box('satin', -0.006, 0.028, -0.02, 0.006, 0.055, 0.012, plastic);
+        for (const s of [-1, 1]) cylinder(kit, 'matte', s * 0.014, 0.026, -0.012, 0.026, 0.026, 0.014, 0x151515, 16, new THREE.Euler(0, 0, Math.PI / 2));
+      });
     }
-    cylinder(kit, 'chrome', 0, 0.08, 0, 0.025, 0.025, 0.35, 0x9a9a9a, 12);
-    rbox(kit, 'linen', 0, 0.47, 0, 0.48, 0.08, 0.46, 0.04, color);
-    kit.box('satin', -0.03, 0.47, 0.2, 0.03, 0.7, 0.24, 0x2a2a2a);
-    rbox(kit, 'linen', 0, 0.85, 0.24, 0.44, 0.5, 0.06, 0.04, color, new THREE.Euler(0.12, 0, 0));
+    // Gas lift in its telescoping cover, the tilt mechanism and its lever.
+    cylinder(kit, 'chrome', 0, 0.1, 0, 0.014, 0.014, 0.3, 0xa0a3a6, 14);
+    cylinder(kit, 'satin', 0, 0.1, 0, 0.027, 0.024, 0.16, plastic, 18);
+    rbox(kit, 'satin', 0, 0.41, 0.02, 0.2, 0.05, 0.24, 0.015, plastic);
+    tube(kit, 'satin', [new THREE.Vector3(0.09, 0.4, -0.02), new THREE.Vector3(0.2, 0.39, -0.04), new THREE.Vector3(0.22, 0.385, -0.1)], 0.006, plastic);
+    // Seat: moulded shell with a waterfall-edged cushion.
+    rbox(kit, 'satin', 0, 0.445, 0, 0.48, 0.03, 0.46, 0.012, plastic);
+    puffy(kit, 'linen', 0, 0.49, -0.005, 0.47, 0.08, 0.45, color, 0.55);
+    // Armrests.
+    for (const s of [-1, 1]) {
+      tube(kit, 'satin', [new THREE.Vector3(s * 0.2, 0.44, 0.08), new THREE.Vector3(s * 0.26, 0.47, 0.07), new THREE.Vector3(s * 0.265, 0.64, 0.05)], 0.014, plastic);
+      rbox(kit, 'satin', s * 0.265, 0.655, 0.02, 0.07, 0.028, 0.24, 0.012, 0x303030);
+    }
+    // Curved back on a spine that rises from behind the seat.
+    tube(kit, 'satin', [new THREE.Vector3(0, 0.42, 0.13), new THREE.Vector3(0, 0.46, 0.28), new THREE.Vector3(0, 0.62, 0.3)], 0.022, plastic);
+    bentBoard(kit, 'satin', 0, 0.86, 0.31, 0.45, 0.52, 0.022, -0.045, plastic, 0.12);
+    bentBoard(kit, 'linen', 0, 0.86, 0.285, 0.42, 0.48, 0.035, -0.045, color, 0.12);
     kit.solid(-0.3, -0.3, 0.3, 0.3, 0, 1.1);
   });
 }

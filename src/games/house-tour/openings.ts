@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Kit } from './kit';
 import type { MaterialName } from './materials';
 import { cylinder, rbox } from './furniture';
+import { drapery } from './soft';
 import { CH, FL1, M, OPENINGS, ROOMS, thickness, type Opening } from './plan';
 
 const SASH = 0x3a3531;
@@ -37,34 +38,55 @@ function sash(kit: Kit, a0: number, a1: number, y0: number, y1: number, d0: numb
   kit.box('sash', a0 + s, y1 - r, d0, a1 - s, y1, d1, SASH);
   const dm = (d0 + d1) / 2;
   kit.box(frosted ? 'frosted' : 'glass', a0 + s, y0 + r, dm - 0.002, a1 - s, y1 - r, dm + 0.002, 0xffffff);
+  // Rubber glazing gaskets where the pane meets the frame, on both faces.
+  const g = 0.005;
+  for (const side of [-1, 1]) {
+    const f0 = dm + side * 0.004, f1 = dm + side * 0.007;
+    kit.box('matte', a0 + s, y0 + r, f0, a0 + s + g, y1 - r, f1, 0x151515);
+    kit.box('matte', a1 - s - g, y0 + r, f0, a1 - s, y1 - r, f1, 0x151515);
+    kit.box('matte', a0 + s, y0 + r, f0, a1 - s, y0 + r + g, f1, 0x151515);
+    kit.box('matte', a0 + s, y1 - r - g, f0, a1 - s, y1 - r, f1, 0x151515);
+  }
 }
 
 function curtains(kit: Kit, o: Opening, inside: number, floor: number, rng: number) {
   const room = ROOMS.find((r) => r.floor === (o.y0 > 3 ? 2 : 1) && (o.axis === 'x' ? r.x0 <= o.a0 && r.x1 >= o.a1 && (Math.abs(r.z0 - o.at) < 0.01 || Math.abs(r.z1 - o.at) < 0.01) : r.z0 <= o.a0 && r.z1 >= o.a1 && (Math.abs(r.x0 - o.at) < 0.01 || Math.abs(r.x1 - o.at) < 0.01)));
   const palette: Record<string, number> = { ldk: 0xcfc5b4, master: 0x7d8a92, bed2: 0x9fb3a6, bed3: 0xc9b39a, den: 0x8e8577 };
   const color = palette[room?.id ?? ''] ?? 0xcfc5b4;
-  const top = o.y1 + 0.16;
-  const bottom = o.y0 < floor + 0.3 ? floor + 0.015 : o.y0 - 0.12;
-  const d = inside * 0.19;
-  kit.box('satin', o.a0 - 0.18, top - 0.02, d - 0.012, o.a1 + 0.18, top + 0.02, d + 0.012, 0xe9e5dc);
-  for (const a of [o.a0 - 0.18, o.a1 + 0.18]) kit.box('satin', a - 0.01, top - 0.04, inside * 0.1, a + 0.01, top + 0.03, d, 0xe9e5dc);
-  const drape = (a0: number, width: number, depth: number, mat: MaterialName, tint: number, folds: number) => {
-    const height = top - 0.03 - bottom;
-    const geometry = new THREE.PlaneGeometry(width, height, folds * 6, 1);
-    const pos = geometry.getAttribute('position');
-    for (let i = 0; i < pos.count; i++) pos.setZ(i, Math.sin(((pos.getX(i) + width / 2) / width) * folds * Math.PI * 2 + rng) * depth);
-    geometry.computeVertexNormals();
-    kit.geometry(mat, geometry, new THREE.Matrix4().makeTranslation(a0 + width / 2, bottom + height / 2, d - inside * 0.03), tint, 'keep');
-    geometry.dispose();
+  const top = o.y1 + 0.17;
+  const bottom = o.y0 < floor + 0.3 ? floor + 0.012 : o.y0 - 0.12;
+  const front = inside * 0.2, back = inside * 0.13;
+  const a0 = o.a0 - 0.2, a1 = o.a1 + 0.2;
+  // Double rod on wall brackets: drapes in front, lace behind; finials at the ends.
+  const along = new THREE.Euler(0, 0, Math.PI / 2);
+  for (const [d, r] of [[front, 0.012], [back, 0.009]] as const) {
+    cylinder(kit, 'satin', (a0 + a1) / 2, top + 0.02, d, r, r, a1 - a0, 0xe4ddd0, 14, along);
+    for (const a of [a0, a1]) {
+      const s = a < o.a0 ? -1 : 1;
+      cylinder(kit, 'satin', a + s * 0.012, top + 0.02, d, r * 1.6, r * 1.6, 0.024, 0xe4ddd0, 16, along);
+      cylinder(kit, 'satin', a + s * 0.03, top + 0.02, d, r * 1.1, r * 0.4, 0.014, 0xe4ddd0, 16, new THREE.Euler(0, 0, -s * Math.PI / 2));
+    }
+  }
+  for (const a of [a0 + 0.08, (a0 + a1) / 2, a1 - 0.08]) {
+    kit.box('satin', a - 0.012, top - 0.01, 0, a + 0.012, top + 0.05, front + inside * 0.012, 0xe4ddd0);
+    rbox(kit, 'satin', a, top + 0.02, inside * 0.012, 0.05, 0.1, 0.024, 0.008, 0xe4ddd0);
+  }
+  const panel = (x: number, width: number, d: number, mat: MaterialName, tint: number, folds: number, depth: number, seed: number) => {
+    drapery(kit, mat, x, width, top - 0.012, bottom, d, folds, depth, tint, seed);
+    // Rings on the rod, one per pleat.
+    const count = folds * 2 + 1;
+    for (let i = 0; i < count; i++) kit.geometry('satin', RING, new THREE.Matrix4().compose(new THREE.Vector3(x + (width * i) / (count - 1), top + 0.02, d), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI / 2, 0)), new THREE.Vector3(1, 1, 1)), 0xd9d2c4, 'keep');
   };
-  // Drapes gathered at both sides; a sheer panel drawn across part of the glass.
-  drape(o.a0 - 0.16, 0.36, 0.04, 'curtain', color, 5);
-  drape(o.a1 - 0.2, 0.36, 0.04, 'curtain', color, 5);
+  // Drapes gathered at both sides; lace drawn across part of the glass.
+  panel(a0 + 0.04, 0.34, front, 'curtain', color, 5, 0.032, rng);
+  panel(a1 - 0.38, 0.34, front, 'curtain', color, 5, 0.032, rng + 7);
   if (!o.walk) {
-    const width = (o.a1 - o.a0) * 0.45;
-    kit.at(0, 0, inside * 0.03, 0, () => drape(o.a1 - width - 0.05, width, 0.02, 'sheer', 0xffffff, 7));
+    const width = (o.a1 - o.a0) * 0.5;
+    panel(o.a1 - width + 0.1, width, back, 'sheer', 0xffffff, Math.max(5, Math.round(width * 9)), 0.018, rng + 13);
   }
 }
+
+const RING = new THREE.TorusGeometry(0.019, 0.003, 6, 16);
 
 function windowUnit(kit: Kit, o: Opening) {
   const out = outward(o);
@@ -106,9 +128,20 @@ function windowUnit(kit: Kit, o: Opening) {
   if (o.y0 > floor + 0.2) kit.box('whiteoak', o.a0 - 0.04, o.y0 - 0.025, dd(-0.14), o.a1 + 0.04, o.y0, dd(-0.03), lining, { swap: true });
   // Outside: drip sill, and a slim hood over the larger windows.
   kit.box('sash', o.a0 - 0.02, o.y0 - 0.03, dd(0.1), o.a1 + 0.02, o.y0, dd(0.15), SASH);
-  if (w.curtain || w.shoji) {
+  if (w.open) {
+    // Roller-shutter box above the full-height sliding doors, with guide rails either side.
+    const shutter = 0x4a4540;
+    rbox(kit, 'sash', (o.a0 + o.a1) / 2, o.y1 + 0.15, dd(0.225), o.a1 - o.a0 + 0.2, 0.25, 0.22, 0.05, shutter);
+    kit.box('sash', o.a0 - 0.09, o.y1 + 0.02, dd(0.115), o.a1 + 0.09, o.y1 + 0.04, dd(0.2), 0x2f2c29);
+    for (const [r0, r1] of [[o.a0 - 0.09, o.a0 - 0.03], [o.a1 + 0.03, o.a1 + 0.09]] as const) {
+      kit.box('sash', r0, o.y0 - 0.02, dd(0.115), r1, o.y1 + 0.04, dd(0.19), shutter);
+      kit.box('matte', r0 + 0.02, o.y0, dd(0.186), r1 - 0.02, o.y1 + 0.03, dd(0.192), 0x1f1d1b);
+    }
+  } else if (w.curtain || w.shoji) {
     kit.box('sash', o.a0 - 0.12, o.y1 + 0.14, dd(0.115), o.a1 + 0.12, o.y1 + 0.17, dd(0.52), 0x4a4540);
     kit.box('sash', o.a0 - 0.12, o.y1 + 0.1, dd(0.5), o.a1 + 0.12, o.y1 + 0.17, dd(0.52), 0x4a4540);
+    // Hood support brackets.
+    for (const a of [o.a0 - 0.06, o.a1 + 0.06]) kit.box('sash', a - 0.006, o.y1 + 0.02, dd(0.115), a + 0.006, o.y1 + 0.14, dd(0.3), 0x3a3531);
   }
   if (w.curtain) curtains(kit, o, inside, floor, o.a0 * 3.1);
   if (w.shoji) shoji(kit, o, inside);
@@ -226,14 +259,16 @@ function foldDoor(kit: Kit, o: Opening) {
   const side = localSign(o, 1);
   const panel = (o.a1 - o.a0 - 0.05) / 2;
   const h = o.y1 - o.y0 - 0.04;
-  kit.at(o.a0 + 0.03, o.y0 + 0.02, side * 0.06, 0, () => {
-    for (const [x, yaw] of [[0, side * -1.35], [panel * Math.cos(1.35) + 0.01, side * 1.35 - Math.PI]] as const) {
-      kit.at(x, 0, side * panel * Math.sin(1.35) * (x ? 1 : 0), yaw, () => {
-        kit.box('satin', 0, 0, -0.012, panel, h, 0.012, 0xf4f3f0, { skip: '' });
-        kit.box('frosted', 0.05, 0.08, -0.014, panel - 0.05, h - 0.08, 0.014, 0xffffff);
-      });
-    }
-  });
+  // Folded open: both leaves stacked flat against the jamb away from the tub, pivot hinges on top.
+  const y0 = o.y0 + 0.02;
+  for (const [a, tilt] of [[o.a1 - 0.04, 0], [o.a1 - 0.068, 0.06]] as const) {
+    kit.at(a, y0, side * 0.07, side * tilt, () => {
+      kit.box('satin', -0.012, 0, 0, 0.012, h, side * panel, 0xf4f3f0);
+      kit.box('frosted', -0.014, 0.08, side * 0.05, 0.014, h - 0.08, side * (panel - 0.05), 0xffffff);
+      kit.box('satin', -0.014, 0.9, side * (panel - 0.06), 0.014, 1.1, side * (panel - 0.03), 0xd9d7d0);
+    });
+  }
+  kit.box('chrome', o.a0 + 0.03, o.y1 - 0.045, -0.02, o.a1 - 0.03, o.y1 - 0.03, 0.02, 0xcfcfcf);
 }
 
 function closetDoors(kit: Kit, o: Opening) {

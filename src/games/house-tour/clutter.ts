@@ -284,8 +284,10 @@ function pinchHanger(kit: Kit, x: number, top: number, z: number, seed: number) 
     if (rng() < 0.75) {
       const color = colors[Math.floor(rng() * colors.length)]!;
       kit.at(px, ringY - 0.05, pz, -a, () => {
-        rbox(kit, 'linen', 0, -0.1, 0, 0.012, 0.2, 0.07, 0.005, color);
-        rbox(kit, 'linen', 0, -0.2, 0.035, 0.012, 0.06, 0.1, 0.005, color);
+        // Sock: a soft tube for the leg, the foot turning off at the heel.
+        puffy(kit, 'linen', 0, -0.095, 0, 0.06, 0.018, 0.19, color, 1, new THREE.Euler(Math.PI / 2, 0, Math.PI / 2));
+        puffy(kit, 'linen', 0, -0.195, 0.03, 0.058, 0.018, 0.1, color, 1, new THREE.Euler(0.35, 0, Math.PI / 2));
+        kit.box('linen', -0.01, -0.012, -0.031, 0.01, 0, 0.031, new THREE.Color(color).multiplyScalar(0.85));
       });
     }
   }

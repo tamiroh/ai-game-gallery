@@ -36,7 +36,7 @@ export type MaterialName =
   | ScannedName
   | 'siding' | 'curtain' | 'paper' | 'ceiling' | 'vinyl' | 'bathFloor' | 'bathWall' | 'fusuma' | 'shoji' | 'scroll'
   | 'matte' | 'satin' | 'gloss' | 'lacquer' | 'metal' | 'chrome' | 'sash' | 'glass' | 'frosted' | 'screen'
-  | 'art' | 'maple' | 'kawara' | 'lamp' | 'leaf' | 'sheer' | 'mesh' | 'water';
+  | 'art' | 'maple' | 'foliage' | 'kawara' | 'lamp' | 'leaf' | 'sheer' | 'mesh' | 'water';
 
 function canvas(size: number, draw: (ctx: CanvasRenderingContext2D, size: number) => void, height = size) {
   const element = document.createElement('canvas');
@@ -488,12 +488,13 @@ export function createMaterials(manager: THREE.LoadingManager, anisotropy: numbe
     chrome: plain({ roughness: 0.08, metalness: 1 }),
     sash: plain({ roughness: 0.4, metalness: 0.7 }),
     glass: new THREE.MeshStandardMaterial({ color: 0xdfe8ea, roughness: 0.02, metalness: 0.1, transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide }),
-    frosted: new THREE.MeshStandardMaterial({ color: 0xeef2f2, roughness: 0.6, transparent: true, opacity: 0.75, emissive: 0xffffff, emissiveIntensity: 0.18, depthWrite: false, side: THREE.DoubleSide }),
+    frosted: new THREE.MeshStandardMaterial({ color: 0xeef2f2, roughness: 0.6, transparent: true, opacity: 0.8, emissive: 0xffffff, emissiveIntensity: 0.18, side: THREE.DoubleSide }),
     screen: plain({ roughness: 0.06, metalness: 0.2 }),
     kawara: plain({ roughness: 0.42, metalness: 0.35 }),
     lamp: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff1dc, emissiveIntensity: 2.2, roughness: 0.6, vertexColors: true }),
     leaf: plain({ alphaMap: leaf, alphaTest: 0.5, roughness: 0.7, side: THREE.DoubleSide }),
     maple: plain({ alphaMap: mapleLeaf, alphaTest: 0.5, roughness: 0.75, side: THREE.DoubleSide }),
+    foliage: plain({ roughness: 0.5, side: THREE.DoubleSide }),
     sheer: new THREE.MeshStandardMaterial({ color: 0xf6f4ef, roughness: 1, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false }),
     mesh: new THREE.MeshStandardMaterial({ color: 0x222426, roughness: 0.8, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false }),
     water: new THREE.MeshStandardMaterial({ color: 0x9fc4c8, roughness: 0.03, transparent: true, opacity: 0.55, depthWrite: false }),
