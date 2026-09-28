@@ -219,8 +219,8 @@ export function buildSite(kit: Kit) {
   kit.box('gloss', W + 0.12, 1.2, 1.4, W + 0.2, 1.5, 1.65, 0xdddcd6);
   kit.box('glass', W + 0.2, 1.3, 1.45, W + 0.21, 1.45, 1.6, 0xffffff);
   // Outdoor tap.
-  kit.box('concrete', 3.6, 0, D + 0.3, 3.72, 0.8, D + 0.42, 0x9c968c);
-  kit.box('chrome', 3.62, 0.62, D + 0.42, 3.7, 0.66, D + 0.55, 0xcfcfcf);
+  kit.box('concrete', 4.7, 0, D + 0.18, 4.82, 0.8, D + 0.3, 0x9c968c);
+  kit.box('chrome', 4.72, 0.62, D + 0.3, 4.8, 0.66, D + 0.43, 0xcfcfcf);
 
 
   // Street: poles, wires, neighbours.

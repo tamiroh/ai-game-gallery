@@ -12,6 +12,7 @@ import { buildHouse } from './house';
 import { buildOpenings } from './openings';
 import { buildFurniture, releaseShapes, type Fixture } from './furniture';
 import { buildDetails } from './details';
+import { buildClutter } from './clutter';
 import { releaseSoft } from './soft';
 import { buildSite, SITE } from './site';
 import { drawPlan, roomAt } from './hud';
@@ -168,6 +169,7 @@ function start(root: HTMLElement) {
   const fixtures: Fixture[] = buildFurniture(kit);
   kit.withBevel(0, () => buildSite(kit));
   buildDetails(kit);
+  buildClutter(kit);
   releaseShapes();
   releaseSoft();
   const world = kit.build(materials, shadowFlags);
