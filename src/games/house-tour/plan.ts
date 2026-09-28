@@ -84,7 +84,7 @@ export const ROOMS: Room[] = [
   room('bed3', 'Bedroom 3', 2, 8, 4, 11, 8, { walls: { w: { mat: 'paper', color: 0xe3d3bd } } }),
 ];
 
-export type OpeningKind = 'open' | 'swing' | 'slide' | 'fold' | 'closet' | 'entry' | 'window' | 'fusuma' | 'toko' | 'oshiire' | 'rail';
+export type OpeningKind = 'open' | 'swing' | 'slide' | 'fold' | 'closet' | 'entry' | 'window' | 'fusuma' | 'toko' | 'oshiire' | 'rail' | 'ranma';
 
 export interface Opening {
   /** The wall runs along this axis: 'x' walls sit at z = at, 'z' walls at x = at. */
@@ -122,6 +122,7 @@ export const OPENINGS: Opening[] = [
   // Ground floor, inside.
   { axis: 'z', at: 5 * M, a0: 1.9, a1: 2.66, y0: F1, y1: F1 + 2.0, kind: 'swing', walk: true, hinge: 0, swing: -1, glass: true },
   { axis: 'z', at: 5 * M, a0: 5 * M + 0.06, a1: 8 * M - 0.1, y0: F1, y1: F1 + 1.8, kind: 'fusuma', walk: true },
+  { axis: 'z', at: 5 * M, a0: 5 * M + 0.12, a1: 8 * M - 0.16, y0: F1 + 1.97, y1: F1 + 2.27, kind: 'ranma', walk: false },
   { axis: 'x', at: 2 * M, a0: 4.7, a1: 5.5, y0: F1, y1: F1 + 2.0, kind: 'slide', walk: true },
   { axis: 'z', at: 7 * M, a0: 0.5, a1: 1.25, y0: F1 + 0.02, y1: F1 + 1.95, kind: 'fold', walk: true },
   { axis: 'x', at: 2 * M, a0: 8.28, a1: 9.02, y0: F1, y1: F1 + 2.0, kind: 'swing', walk: true, hinge: 1, swing: 1 },

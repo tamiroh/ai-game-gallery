@@ -82,7 +82,7 @@ export function drawPlan(canvas: HTMLCanvasElement, px: number, pz: number, py: 
   ctx.strokeRect(0, 0, W, D);
   for (const o of OPENINGS) {
     const upper = o.y0 >= FL2 - 0.15;
-    if ((floor === 2) !== upper || o.kind === 'rail') continue;
+    if ((floor === 2) !== upper || o.kind === 'rail' || o.kind === 'ranma') continue;
     const window = o.kind === 'window' && !o.walk;
     const along = o.axis === 'x';
     const [x, z, w, h] = along ? [o.a0, o.at - 0.12, o.a1 - o.a0, 0.24] : [o.at - 0.12, o.a0, 0.24, o.a1 - o.a0];

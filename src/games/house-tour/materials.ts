@@ -36,7 +36,7 @@ export type MaterialName =
   | ScannedName
   | 'siding' | 'curtain' | 'paper' | 'ceiling' | 'vinyl' | 'bathFloor' | 'bathWall' | 'fusuma' | 'shoji' | 'scroll'
   | 'matte' | 'satin' | 'gloss' | 'lacquer' | 'metal' | 'chrome' | 'sash' | 'glass' | 'frosted' | 'screen'
-  | 'kawara' | 'lamp' | 'leaf' | 'sheer' | 'mesh' | 'water';
+  | 'art' | 'kawara' | 'lamp' | 'leaf' | 'sheer' | 'mesh' | 'water';
 
 function canvas(size: number, draw: (ctx: CanvasRenderingContext2D, size: number) => void, height = size) {
   const element = document.createElement('canvas');
@@ -271,6 +271,96 @@ function scrollColor() {
   }, 768);
 }
 
+/**
+ * Four framed prints in a 2 × 2 atlas: a layered-hill landscape, a botanical study,
+ * a wave pattern, and a wall calendar page.
+ */
+function artAtlas() {
+  return canvas(1024, (ctx) => {
+    const cell = (i: number, draw: () => void) => {
+      ctx.save();
+      ctx.translate((i % 2) * 512, Math.floor(i / 2) * 512);
+      ctx.beginPath();
+      ctx.rect(0, 0, 512, 512);
+      ctx.clip();
+      draw();
+      ctx.restore();
+    };
+    cell(0, () => {
+      ctx.fillStyle = '#efe3cc';
+      ctx.fillRect(0, 0, 512, 512);
+      ctx.fillStyle = '#d9784a';
+      ctx.beginPath();
+      ctx.arc(330, 170, 70, 0, Math.PI * 2);
+      ctx.fill();
+      const hills = ['#b9a27a', '#8d9a7b', '#5f7466', '#394a45'];
+      hills.forEach((color, k) => {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(0, 512);
+        for (let x = 0; x <= 512; x += 8) ctx.lineTo(x, 250 + k * 60 - Math.sin(x / (90 + k * 30) + k * 1.7) * (50 - k * 8));
+        ctx.lineTo(512, 512);
+        ctx.fill();
+      });
+    });
+    cell(1, () => {
+      ctx.fillStyle = '#f3efe6';
+      ctx.fillRect(0, 0, 512, 512);
+      ctx.strokeStyle = '#4f6b4a';
+      ctx.lineWidth = 3;
+      const rand = random(12);
+      for (let s = 0; s < 3; s++) {
+        const x0 = 170 + s * 90;
+        ctx.beginPath();
+        ctx.moveTo(x0, 470);
+        ctx.quadraticCurveTo(x0 - 40 + s * 30, 260, x0 - 10 + s * 20, 60 + s * 40);
+        ctx.stroke();
+        for (let i = 0; i < 9; i++) {
+          const t = 0.15 + i * 0.09;
+          const y = 470 - t * (410 - s * 40);
+          const side = i % 2 ? 1 : -1;
+          ctx.fillStyle = `rgba(${70 + rand() * 30},${100 + rand() * 30},${70 + rand() * 20},0.85)`;
+          ctx.beginPath();
+          ctx.ellipse(x0 + side * 34 - s * 8, y, 34, 12, side * -0.6, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    });
+    cell(2, () => {
+      ctx.fillStyle = '#e9e1cf';
+      ctx.fillRect(0, 0, 512, 512);
+      for (let row = 0; row < 9; row++) {
+        for (let col = -1; col < 6; col++) {
+          const cx = col * 100 + (row % 2) * 50, cy = row * 60 + 40;
+          for (let k = 5; k >= 1; k--) {
+            ctx.beginPath();
+            ctx.arc(cx, cy, k * 10, Math.PI, 0);
+            ctx.fillStyle = k % 2 ? '#2f4f6f' : '#e9e1cf';
+            ctx.fill();
+          }
+        }
+      }
+    });
+    cell(3, () => {
+      ctx.fillStyle = '#fbfaf6';
+      ctx.fillRect(0, 0, 512, 512);
+      ctx.fillStyle = '#7d9a8c';
+      ctx.fillRect(0, 0, 512, 200);
+      ctx.fillStyle = '#e8c9a0';
+      ctx.beginPath();
+      ctx.arc(380, 110, 50, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#c0392b';
+      ctx.fillRect(40, 225, 60, 22);
+      ctx.fillStyle = '#9a9a9a';
+      for (let r = 0; r < 5; r++) for (let c = 0; c < 7; c++) {
+        ctx.fillStyle = c === 0 ? '#c0392b' : c === 6 ? '#2d6aa0' : '#555555';
+        ctx.fillRect(40 + c * 66, 275 + r * 46, 16, 20);
+      }
+    });
+  });
+}
+
 function leafAlpha() {
   return canvas(128, (ctx, size) => {
     ctx.clearRect(0, 0, size, size);
@@ -361,6 +451,7 @@ export function createMaterials(manager: THREE.LoadingManager, anisotropy: numbe
     fusuma: plain({ map: repeat(toTexture(fusumaColor(512), true, anisotropy), 0.9), roughness: 0.9 }),
     shoji: plain({ map: repeat(toTexture(shojiColor(256), true, anisotropy), 0.6), roughness: 1, transparent: true, opacity: 0.97, emissive: 0xfff6e8, emissiveIntensity: 0.32, side: THREE.DoubleSide, depthWrite: false }),
     scroll: new THREE.MeshStandardMaterial({ map: toTexture(scrollColor(), true, anisotropy), roughness: 0.95 }),
+    art: new THREE.MeshStandardMaterial({ map: toTexture(artAtlas(), true, anisotropy), roughness: 0.8 }),
     matte: plain({ roughness: 0.85 }),
     satin: plain({ roughness: 0.45 }),
     gloss: plain({ roughness: 0.12 }),

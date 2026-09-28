@@ -10,7 +10,8 @@ import { Kit, type Solid } from './kit';
 import { createMaterials, shadowFlags, skyUrl } from './materials';
 import { buildHouse } from './house';
 import { buildOpenings } from './openings';
-import { buildFurniture, type Fixture } from './furniture';
+import { buildFurniture, releaseShapes, type Fixture } from './furniture';
+import { buildDetails } from './details';
 import { buildSite, SITE } from './site';
 import { drawPlan, roomAt } from './hud';
 import { GROUNDS, SPAWN, STAIR, stairHeight } from './plan';
@@ -164,6 +165,8 @@ function start(root: HTMLElement) {
   buildOpenings(kit);
   const fixtures: Fixture[] = buildFurniture(kit);
   buildSite(kit);
+  buildDetails(kit);
+  releaseShapes();
   const world = kit.build(materials, shadowFlags);
   scene.add(world);
   const solids: Solid[] = [...house.solids, ...kit.solids];

@@ -94,57 +94,6 @@ function hedge(kit: Kit, x0: number, z0: number, x1: number, z1: number, h: numb
   kit.solid(x0, z0, x1, z1, 0, h);
 }
 
-/** A compact hatchback built from an extruded side profile. */
-function car(kit: Kit, x: number, z: number, yaw: number) {
-  kit.at(x, 0, z, yaw, () => {
-    const body = new THREE.Shape();
-    body.moveTo(-1.85, 0.32);
-    body.lineTo(-1.85, 0.72);
-    body.quadraticCurveTo(-1.8, 0.86, -1.5, 0.9);
-    body.lineTo(-1.1, 0.92);
-    body.lineTo(1.55, 0.9);
-    body.quadraticCurveTo(1.82, 0.88, 1.85, 0.66);
-    body.lineTo(1.85, 0.32);
-    body.closePath();
-    const width = 1.64;
-    const bodyGeometry = new THREE.ExtrudeGeometry(body, { depth: width - 0.16, bevelEnabled: true, bevelSize: 0.08, bevelThickness: 0.08, bevelSegments: 4, curveSegments: 10 });
-    kit.geometry('gloss', bodyGeometry, new THREE.Matrix4().makeTranslation(0, 0, -(width - 0.16) / 2), 0xe8e6e1, 'keep');
-    const cabin = new THREE.Shape();
-    cabin.moveTo(-1.55, 0.9);
-    cabin.quadraticCurveTo(-1.45, 1.38, -1.2, 1.48);
-    cabin.lineTo(0.55, 1.5);
-    cabin.quadraticCurveTo(0.75, 1.48, 1.3, 0.92);
-    cabin.closePath();
-    const cabinGeometry = new THREE.ExtrudeGeometry(cabin, { depth: width - 0.34, bevelEnabled: true, bevelSize: 0.06, bevelThickness: 0.06, bevelSegments: 3, curveSegments: 10 });
-    kit.geometry('screen', cabinGeometry, new THREE.Matrix4().makeTranslation(0, 0, -(width - 0.34) / 2), 0x1b2226, 'keep');
-    kit.box('gloss', -1.25, 1.52, -0.66, 0.45, 1.56, 0.66, 0xe8e6e1);
-    // Pillars.
-    for (const s of [-1, 1]) {
-      kit.box('gloss', -0.12, 0.9, s * 0.75 - 0.04, -0.02, 1.52, s * 0.75 + 0.04, 0xe8e6e1);
-      kit.box('satin', -0.6, 0.62, s * 0.815, -0.48, 0.66, s * 0.84, 0x2a2a2a);
-      kit.box('satin', 0.4, 0.62, s * 0.815, 0.52, 0.66, s * 0.84, 0x2a2a2a);
-    }
-    // Wheels.
-    const tyre = new THREE.CylinderGeometry(0.31, 0.31, 0.2, 24);
-    const rim = new THREE.CylinderGeometry(0.19, 0.19, 0.21, 16);
-    for (const wx of [-1.2, 1.25]) for (const s of [-1, 1]) {
-      kit.geometry('matte', tyre, trs(wx, 0.31, s * 0.7, Math.PI / 2), 0x1d1d1d, 'keep');
-      kit.geometry('metal', rim, trs(wx, 0.31, s * 0.7, Math.PI / 2), 0x9a9da0, 'keep');
-    }
-    // Lamps, grille, plates, mirrors.
-    for (const s of [-1, 1]) {
-      kit.box('lamp', 1.88, 0.7, s * 0.55 - 0.16, 1.9, 0.78, s * 0.55 + 0.16, 0xdfe6ea);
-      kit.box('gloss', -1.9, 0.72, s * 0.6 - 0.12, -1.88, 0.84, s * 0.6 + 0.12, 0x8a1a18);
-      kit.box('gloss', 0.55, 1.0, s * 0.86, 0.72, 1.1, s * 0.95, 0xe8e6e1);
-    }
-    kit.box('screen', 1.9, 0.45, -0.45, 1.92, 0.62, 0.45, 0x222426);
-    kit.box('satin', 1.92, 0.38, -0.2, 1.935, 0.5, 0.2, 0xf1f0e6);
-    kit.box('satin', -1.935, 0.5, -0.2, -1.92, 0.62, 0.2, 0xf1f0e6);
-    kit.box('matte', -1.88, 0.3, -0.8, 1.88, 0.42, 0.8, 0x2d2d2d);
-    kit.solid(-1.95, -0.9, 1.95, 0.9, 0, 1.6);
-  });
-}
-
 function utilityPole(kit: Kit, x: number, z: number) {
   const pole = new THREE.CylinderGeometry(0.13, 0.17, 10, 14);
   kit.geometry('concrete', pole, trs(x, 5, z), 0xb8b4ac);
@@ -217,24 +166,15 @@ export function buildSite(kit: Kit) {
   flat('grass', LOT.x1 + 0.2, LOT.z0 - 0.2, 40, ROAD.z0, -0.01, 0x9fae84);
   // Stepping stones from the gate to the porch.
   const stone = new THREE.ExtrudeGeometry(roundedRect(0.62, 0.46, 0.12), { depth: 0.05, bevelEnabled: true, bevelSize: 0.02, bevelThickness: 0.02, bevelSegments: 2 });
-  for (let i = 0; i < 5; i++) kit.geometry('granite', stone, trs(8.95 + (i % 2 ? 0.12 : -0.1), 0.0, 12.9 - i * 0.78, -Math.PI / 2, 0, (i * 0.7) % 0.3), 0xbab4aa);
+  for (let i = 0; i < 5; i++) kit.geometry('concrete', stone, trs(8.95 + (i % 2 ? 0.12 : -0.1), 0.0, 12.9 - i * 0.78, -Math.PI / 2, 0, (i * 0.7) % 0.3), 0xe4ddd2);
   // Garden stepping stones to the deck.
-  for (let i = 0; i < 4; i++) kit.geometry('granite', stone, trs(2.2 + i * 0.35, 0.0, 10.8 + i * 0.6, -Math.PI / 2, 0, i * 0.4), 0xb0aaa0);
+  for (let i = 0; i < 4; i++) kit.geometry('concrete', stone, trs(2.2 + i * 0.35, 0.0, 10.8 + i * 0.6, -Math.PI / 2, 0, i * 0.4), 0xdcd5ca);
 
   // Boundary walls, front fence, gate posts.
   blockWall(kit, LOT.x0, LOT.z0, LOT.x0 + 0.12, LOT.z1, 1.2);
   blockWall(kit, LOT.x0, LOT.z0, LOT.x1, LOT.z0 + 0.12, 1.2);
   blockWall(kit, LOT.x1 - 0.12, LOT.z0, LOT.x1, 8.2, 1.2);
   fence(kit, LOT.x0, 7.9, LOT.z1 - 0.1);
-  kit.box('siding', 7.9, 0, LOT.z1 - 0.3, 8.45, 1.45, LOT.z1 + 0.05, 0x6f6259);
-  kit.box('concrete', 7.88, 1.45, LOT.z1 - 0.32, 8.47, 1.49, LOT.z1 + 0.07, 0x8d8a83);
-  kit.solid(7.9, LOT.z1 - 0.3, 8.45, LOT.z1 + 0.05, 0, 1.5);
-  // Name plate (house number only), intercom, mailbox, gate lamp.
-  kit.box('gloss', 8.0, 1.12, LOT.z1 + 0.05, 8.35, 1.3, LOT.z1 + 0.065, 0xece6d6);
-  for (let i = 0; i < 3; i++) kit.box('matte', 8.07 + i * 0.08, 1.17, LOT.z1 + 0.065, 8.12 + i * 0.08, 1.25, LOT.z1 + 0.068, 0x3a3531);
-  kit.box('satin', 8.1, 0.95, LOT.z1 + 0.05, 8.25, 1.07, LOT.z1 + 0.08, 0x2a2a2a);
-  kit.box('lamp', 8.16, 1.03, LOT.z1 + 0.08, 8.2, 1.05, LOT.z1 + 0.082, 0x9fd3ff);
-  kit.box('satin', 7.93, 0.55, LOT.z1 + 0.05, 8.4, 0.85, LOT.z1 + 0.15, 0x3d3a36);
   kit.box('sash', 10.0, 0, LOT.z1 - 0.3, 10.2, 1.45, LOT.z1 + 0.05, 0x3a3531);
   kit.solid(10.0, LOT.z1 - 0.3, 10.2, LOT.z1 + 0.05, 0, 1.5);
 
@@ -249,7 +189,6 @@ export function buildSite(kit: Kit) {
     const rng = random(40 + i);
     leafCluster(kit, 4.9 + rng() * 2.6, 0.15, 9.3 + rng() * 0.6, 0.18, 40, new THREE.Color(i % 3 ? 0x4c6d34 : 0x8a5f9c), 60 + i, 0.05);
   }
-  car(kit, 12.1, 10.9, Math.PI / 2);
 
   // Service yard: air-conditioner condensers, heat-pump water heater, meters.
   const condenser = (x: number, z: number, yaw: number) => kit.at(x, 0, z, yaw, () => {

@@ -350,6 +350,19 @@ function oshiire(kit: Kit, o: Opening) {
 
 const INT_T = 0.12;
 
+/** Transom above the fusuma: a slim frame filled with close-set vertical slats. */
+function ranma(kit: Kit, o: Opening) {
+  const t = INT_T;
+  const f = 0.03;
+  kit.box('whiteoak', o.a0, o.y0, -t / 2, o.a0 + f, o.y1, t / 2, 0xd6bb90, { swap: true });
+  kit.box('whiteoak', o.a1 - f, o.y0, -t / 2, o.a1, o.y1, t / 2, 0xd6bb90, { swap: true });
+  kit.box('whiteoak', o.a0, o.y0, -t / 2, o.a1, o.y0 + f, t / 2, 0xd6bb90);
+  kit.box('whiteoak', o.a0, o.y1 - f, -t / 2, o.a1, o.y1, t / 2, 0xd6bb90);
+  const mid = (o.y0 + o.y1) / 2;
+  kit.box('whiteoak', o.a0 + f, mid - 0.008, -0.012, o.a1 - f, mid + 0.008, 0.012, 0xc9ad83);
+  for (let a = o.a0 + f + 0.03; a < o.a1 - f - 0.01; a += 0.032) kit.box('whiteoak', a - 0.005, o.y0 + f, -0.009, a + 0.005, o.y1 - f, 0.009, 0xdcc29a);
+}
+
 /** Six mats in the classic pinwheel layout, with posts, nageshi and tatami-yose. */
 function washitsu(kit: Kit) {
   const x0 = 5 * M + 0.06, x1 = 9 * M - 0.06, z0 = 5 * M + 0.06, z1 = 8 * M - 0.1;
@@ -391,6 +404,7 @@ export function buildOpenings(kit: Kit) {
         case 'fusuma': return fusumaOpening(kit, o);
         case 'toko': return tokonoma(kit, o);
         case 'oshiire': return oshiire(kit, o);
+        case 'ranma': return ranma(kit, o);
         default: return undefined;
       }
     });

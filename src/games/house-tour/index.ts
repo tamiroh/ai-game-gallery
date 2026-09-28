@@ -6,5 +6,5 @@ export default {
   description: 'Walk through a detailed two-storey Japanese family home: genkan, tatami room with tokonoma, open-plan LDK, bath, bedrooms and a balcony.',
   thumbnail,
   model: 'Claude Opus 5.5',
-  creationMinutes: 60,
+  creationMinutes: 75,
 } satisfies GameDefinition;

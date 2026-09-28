@@ -11,24 +11,24 @@ const T2 = FL2 + CH;
 
 const roundedCache = new Map<string, THREE.BufferGeometry>();
 /** Rounded box centered at (x, y, z) in the current frame. */
-function rbox(kit: Kit, mat: MaterialName, x: number, y: number, z: number, w: number, h: number, d: number, r: number, color: ColorLike, rot?: THREE.Euler) {
+export function rbox(kit: Kit, mat: MaterialName, x: number, y: number, z: number, w: number, h: number, d: number, r: number, color: ColorLike, rot?: THREE.Euler) {
   const key = `${w.toFixed(3)}|${h.toFixed(3)}|${d.toFixed(3)}|${r.toFixed(3)}`;
   let geometry = roundedCache.get(key);
   if (!geometry) roundedCache.set(key, (geometry = new RoundedBoxGeometry(w, h, d, 3, Math.min(r, w / 2, h / 2, d / 2) * 0.999)));
   kit.geometry(mat, geometry, rot ? trs(x, y, z, rot.x, rot.y, rot.z) : new THREE.Matrix4().makeTranslation(x, y, z), color);
 }
 
-function cylinder(kit: Kit, mat: MaterialName, x: number, y: number, z: number, r0: number, r1: number, h: number, color: ColorLike, segments = 20, rot?: THREE.Euler) {
+export function cylinder(kit: Kit, mat: MaterialName, x: number, y: number, z: number, r0: number, r1: number, h: number, color: ColorLike, segments = 20, rot?: THREE.Euler) {
   kit.geometry(mat, new THREE.CylinderGeometry(r1, r0, h, segments), rot ? trs(x, y, z, rot.x, rot.y, rot.z) : new THREE.Matrix4().makeTranslation(x, y + h / 2, z), color, 'keep');
 }
 
-function lathe(kit: Kit, mat: MaterialName, profile: [number, number][], x: number, y: number, z: number, color: ColorLike, segments = 28, scale?: THREE.Vector3) {
+export function lathe(kit: Kit, mat: MaterialName, profile: [number, number][], x: number, y: number, z: number, color: ColorLike, segments = 28, scale?: THREE.Vector3) {
   const geometry = new THREE.LatheGeometry(profile.map(([r, h]) => new THREE.Vector2(r, h)), segments);
   kit.geometry(mat, geometry, new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion(), scale ?? new THREE.Vector3(1, 1, 1)), color, 'keep');
   geometry.dispose();
 }
 
-function tube(kit: Kit, mat: MaterialName, points: THREE.Vector3[], radius: number, color: ColorLike) {
+export function tube(kit: Kit, mat: MaterialName, points: THREE.Vector3[], radius: number, color: ColorLike) {
   const geometry = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), points.length * 8, radius, 8);
   kit.geometry(mat, geometry, null, color, 'keep');
   geometry.dispose();
@@ -120,6 +120,9 @@ function sofa(kit: Kit, x: number, y: number, z: number, yaw: number, w: number,
     }
     rbox(kit, 'boucle', -w / 2 + 0.42, 0.66, -0.12, 0.42, 0.4, 0.14, 0.07, 0xd8cdb8, new THREE.Euler(-0.25, 0.3, 0.05));
     rbox(kit, 'linen', w / 2 - 0.45, 0.64, -0.12, 0.4, 0.38, 0.13, 0.06, 0x5d6f78, new THREE.Euler(-0.2, -0.2, -0.04));
+    // Knitted throw folded over one arm.
+    rbox(kit, 'boucle', -w / 2 + 0.1, 0.695, 0.08, 0.3, 0.035, 0.62, 0.015, 0x8b5e4a);
+    rbox(kit, 'boucle', -w / 2 - 0.012, 0.5, 0.08, 0.03, 0.4, 0.62, 0.012, 0x8b5e4a);
     for (const [lx, lz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) cylinder(kit, 'walnut', lx * (w / 2 - 0.08), 0, lz * (d / 2 - 0.1), 0.02, 0.016, 0.14, 0x4a3426, 10);
     kit.solid(-w / 2, -d / 2, w / 2, d / 2, 0, 0.8);
   });
@@ -148,7 +151,7 @@ function cabinet(kit: Kit, w: number, h: number, d: number, doors: number, color
   }
 }
 
-function books(kit: Kit, x0: number, x1: number, y: number, z: number, depth: number, maxH: number, seed: number) {
+export function books(kit: Kit, x0: number, x1: number, y: number, z: number, depth: number, maxH: number, seed: number) {
   const rng = random(seed);
   const palette = [0x7b2d26, 0x2d4a6b, 0xd9d2c1, 0x3c5a3a, 0xc2a36b, 0x1f1f22, 0x8f6b8a, 0xe6e1d4, 0x9a4c2c, 0x5b6770];
   let x = x0 + 0.01;
@@ -194,7 +197,7 @@ function television(kit: Kit, x: number, y: number, z: number, yaw: number) {
   });
 }
 
-function plant(kit: Kit, x: number, y: number, z: number, height: number, seed: number, pot = 0xd9d3c7) {
+export function plant(kit: Kit, x: number, y: number, z: number, height: number, seed: number, pot = 0xd9d3c7) {
   const rng = random(seed);
   lathe(kit, 'satin', [[0, 0], [0.13, 0], [0.16, 0.3], [0.17, 0.32], [0.15, 0.32], [0.14, 0.3], [0, 0.29]], x, y, z, pot, 28);
   cylinder(kit, 'matte', x, y + 0.28, z, 0.14, 0.14, 0.01, 0x3a2c22, 20);
@@ -400,7 +403,7 @@ function living(kit: Kit, fixtures: Fixture[]) {
   outlet(kit, 2.9, y + 1.05, 0.1, 0);
 }
 
-function plantSmall(kit: Kit, x: number, y: number, z: number) {
+export function plantSmall(kit: Kit, x: number, y: number, z: number) {
   lathe(kit, 'gloss', [[0, 0], [0.035, 0], [0.045, 0.08], [0.04, 0.09], [0, 0.085]], x, y, z, 0xefece4, 18);
   const leaf = new THREE.PlaneGeometry(0.04, 0.07);
   const rng = random(77);
@@ -683,6 +686,12 @@ function nightstand(kit: Kit, x: number, y: number, z: number, yaw: number, lamp
       lathe(kit, 'lamp', [[0.1, 0], [0.13, -0.17], [0.125, -0.17], [0.095, 0]], 0, 0.9, -0.02, 0xfff0d8, 28);
     }
     kit.box('satin', 0.05, 0.52, 0.02, 0.13, 0.528, 0.16, 0x1b1b1b);
+    if (lamp) {
+      kit.box('satin', -0.17, 0.52, 0.03, 0.0, 0.545, 0.17, 0x2d4a6b);
+      kit.box('satin', -0.16, 0.545, 0.04, -0.01, 0.56, 0.16, 0xd9d2c1);
+      rbox(kit, 'satin', 0.12, 0.56, 0.1, 0.09, 0.07, 0.05, 0.015, 0xe9e5dc, new THREE.Euler(0, -0.4, 0));
+      kit.within(trs(0.12, 0.56, 0.1, 0, -0.4, 0), () => kit.box('screen', -0.03, -0.02, 0.025, 0.03, 0.02, 0.027, 0x1b2226));
+    }
     kit.solid(-0.22, -0.2, 0.22, 0.2, 0, 0.55);
   });
 }
@@ -862,7 +871,11 @@ export function buildFurniture(kit: Kit): Fixture[] {
   washitsuFurniture(kit, fixtures);
   genkan(kit, fixtures);
   upstairs(kit, fixtures);
+  return fixtures;
+}
+
+/** Frees the shared rounded-box geometries once every builder has run. */
+export function releaseShapes() {
   for (const geometry of roundedCache.values()) geometry.dispose();
   roundedCache.clear();
-  return fixtures;
 }
