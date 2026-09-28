@@ -1,0 +1,654 @@
+---
+import GameHeader from "../../components/GameHeader.astro";
+---
+
+<!doctype html>
+<html lang="en" data-game="skyline-flight">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      name="description"
+      content="Race a jet through a city at golden hour. Follow the line of rings between skyscrapers, under bridges and through the Sky Gate to the finish."
+    />
+    <title>Skyline Flight</title>
+  </head>
+  <body>
+    <GameHeader />
+    <skyline-flight>
+      <canvas
+        class="world"
+        tabindex="-1"
+        aria-label="Chase view of a jet flying through a city at sunset. Use the arrow keys or W A S D to fly and Space to boost."
+        aria-describedby="flight-controls"
+      ></canvas>
+      <div class="lens" aria-hidden="true"></div>
+      <div class="danger" data-danger aria-hidden="true"></div>
+
+      <div class="hud top-left" aria-hidden="true">
+        <strong data-time>0:00.00</strong>
+        <span data-best>Best —</span>
+      </div>
+      <div class="hud top-center" aria-hidden="true">
+        <span class="section" data-section>
+          Harbor Approach
+        </span>
+        <div class="track">
+          <div data-progress></div>
+        </div>
+        <span class="gates" data-gates>
+          0 / 0 gates
+        </span>
+      </div>
+      <div class="hud top-right" aria-hidden="true">
+        <div>
+          <strong data-speed>180</strong>
+          <span>km/h</span>
+        </div>
+        <div>
+          <strong data-alt>0</strong>
+          <span>m alt</span>
+        </div>
+      </div>
+      <div class="radar" aria-hidden="true">
+        <canvas class="map"></canvas>
+      </div>
+
+      <p class="callout" data-callout aria-hidden="true"></p>
+      <p class="warning" data-warning hidden aria-hidden="true"></p>
+      <div class="pointer" data-pointer hidden aria-hidden="true"></div>
+
+      <div class="tools">
+        <button type="button" data-sound aria-pressed="true">
+          Sound: On
+        </button>
+        <button type="button" data-invert aria-pressed="false">
+          Pitch: Normal
+        </button>
+        <button type="button" data-quality>
+          Graphics: High
+        </button>
+        <button type="button" data-restart>
+          Restart
+        </button>
+      </div>
+
+      <section class="panel" data-panel>
+        <p class="kicker" data-kicker>
+          Golden hour
+        </p>
+        <h1 data-panel-title>Skyline Flight</h1>
+        <p class="lede" data-panel-text>
+          Surveying the streets…
+        </p>
+        <div class="bar" aria-hidden="true">
+          <div data-load></div>
+        </div>
+        <dl class="results" data-results hidden>
+          <div>
+            <dt>Time</dt>
+            <dd data-r-time></dd>
+          </div>
+          <div>
+            <dt>Gates</dt>
+            <dd data-r-gates></dd>
+          </div>
+          <div>
+            <dt>Close calls</dt>
+            <dd data-r-close></dd>
+          </div>
+          <div>
+            <dt>Best</dt>
+            <dd data-r-best></dd>
+          </div>
+        </dl>
+        <button type="button" class="primary" data-start disabled>
+          Loading…
+        </button>
+        <dl class="controls" id="flight-controls">
+          <div class="key">
+            <dt>← → / A D</dt>
+            <dd>Bank and turn</dd>
+          </div>
+          <div class="key">
+            <dt>↑ ↓ / W S</dt>
+            <dd>Climb / dive</dd>
+          </div>
+          <div class="key">
+            <dt>Space / Shift</dt>
+            <dd>Boost</dd>
+          </div>
+          <div class="key">
+            <dt>R</dt>
+            <dd>Restart</dd>
+          </div>
+          <div class="key">
+            <dt>Esc / P</dt>
+            <dd>Pause</dd>
+          </div>
+          <div class="key">
+            <dt>Rings</dt>
+            <dd>Miss one: +2 s</dd>
+          </div>
+          <div class="touch-only">
+            <dt>Touch</dt>
+            <dd>Left stick steers (up climbs), hold BOOST</dd>
+          </div>
+        </dl>
+        <p class="rule">
+          Stay on the line of rings. Stray more than a few wingspans, or turn back, for three seconds and the run is
+          over.
+        </p>
+      </section>
+
+      <div class="stick" data-stick aria-hidden="true">
+        <span></span>
+      </div>
+      <button type="button" class="boost" data-boost aria-label="Boost">
+        BOOST
+      </button>
+      <p class="visually-hidden" role="status" data-status></p>
+    </skyline-flight>
+    <script>
+      import "./game";
+    </script>
+  </body>
+</html>
+<style>
+  html[data-game="skyline-flight"] {
+    height: 100%;
+    background: #120f10;
+    color: #f6efe6;
+    color-scheme: dark;
+    font-family: "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  }
+  html[data-game="skyline-flight"] body {
+    margin: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  skyline-flight {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    display: block;
+    overflow: hidden;
+    background: linear-gradient(#5a6c88, #d89a6a 70%, #6d4a3c);
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .world {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    touch-action: none;
+    outline: none;
+  }
+  .lens {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse 125% 100% at 50% 45%, transparent 60%, rgba(20, 10, 8, 0.4));
+  }
+  .danger {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    box-shadow: inset 0 0 160px 30px rgba(220, 40, 30, 0.75);
+  }
+
+  .hud {
+    position: absolute;
+    top: 16px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.5s;
+    text-shadow:
+      0 1px 8px rgba(0, 0, 0, 0.55),
+      0 0 2px rgba(0, 0, 0, 0.45);
+  }
+  skyline-flight:global(.playing) :is(.hud, .radar) {
+    opacity: 1;
+  }
+  .top-left {
+    left: max(22px, env(safe-area-inset-left));
+    display: flex;
+    flex-direction: column;
+  }
+  .top-left strong {
+    font-size: clamp(28px, 3.4vw, 40px);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+  .top-left span {
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(246, 239, 230, 0.78);
+  }
+  .top-center {
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(360px, 44vw);
+    text-align: center;
+  }
+  .section {
+    display: block;
+    font-size: 12px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #ffd79a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .track {
+    margin: 8px 0 6px;
+    height: 4px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.22);
+    overflow: hidden;
+  }
+  .track div {
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, #ffb45e, #ffe2a8);
+  }
+  .gates {
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    color: rgba(246, 239, 230, 0.8);
+  }
+  .top-right {
+    right: max(22px, env(safe-area-inset-right));
+    display: flex;
+    gap: 18px;
+    text-align: right;
+  }
+  .top-right div {
+    display: flex;
+    flex-direction: column;
+  }
+  .top-right strong {
+    font-size: clamp(22px, 2.6vw, 30px);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .top-right span {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(246, 239, 230, 0.75);
+  }
+
+  .radar {
+    position: absolute;
+    left: max(22px, env(safe-area-inset-left));
+    bottom: max(22px, env(safe-area-inset-bottom));
+    width: 150px;
+    height: 150px;
+    border-radius: 14px;
+    padding: 6px;
+    background: rgba(18, 12, 12, 0.45);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    opacity: 0;
+    transition: opacity 0.5s;
+    pointer-events: none;
+  }
+  .map {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .callout {
+    position: absolute;
+    left: 50%;
+    top: 30%;
+    margin: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+    font-size: clamp(34px, 6vw, 64px);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: #fff4df;
+    text-shadow:
+      0 4px 24px rgba(0, 0, 0, 0.5),
+      0 0 30px rgba(255, 170, 80, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      opacity 0.25s,
+      transform 0.25s;
+    white-space: nowrap;
+  }
+  .callout:global(.pop) {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  .callout[data-tone="bad"] {
+    color: #ffb3a6;
+  }
+  .callout[data-tone="good"] {
+    color: #ffe3a3;
+  }
+  .warning {
+    position: absolute;
+    left: 50%;
+    top: 62%;
+    transform: translateX(-50%);
+    margin: 0;
+    padding: 8px 16px;
+    border-radius: 999px;
+    background: rgba(160, 24, 18, 0.72);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .warning[hidden] {
+    display: none;
+  }
+  .pointer {
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-top: 14px solid transparent;
+    border-bottom: 14px solid transparent;
+    border-left: 24px solid #ffc867;
+    filter: drop-shadow(0 0 8px rgba(255, 180, 80, 0.8));
+    pointer-events: none;
+  }
+  .pointer[hidden] {
+    display: none;
+  }
+
+  .tools {
+    position: absolute;
+    right: max(22px, env(safe-area-inset-right));
+    bottom: max(22px, env(safe-area-inset-bottom));
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+    max-width: calc(100% - 200px);
+  }
+  .tools button {
+    font: inherit;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: #f6efe6;
+    background: rgba(20, 14, 14, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 999px;
+    padding: 7px 12px;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  .tools button:hover {
+    background: rgba(20, 14, 14, 0.75);
+  }
+
+  .panel {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: min(480px, calc(100% - 32px));
+    box-sizing: border-box;
+    max-height: calc(100% - 32px);
+    overflow: auto;
+    padding: 30px 32px 24px;
+    background: rgba(22, 14, 14, 0.66);
+    border: 1px solid rgba(255, 220, 180, 0.16);
+    border-radius: 20px;
+    backdrop-filter: blur(18px) saturate(1.25);
+    -webkit-backdrop-filter: blur(18px) saturate(1.25);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+  }
+  .panel[hidden] {
+    display: none;
+  }
+  .kicker {
+    margin: 0 0 10px;
+    font-size: 11px;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    color: #ffc27a;
+  }
+  h1 {
+    margin: 0;
+    font-size: clamp(34px, 5vw, 48px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    font-variant-numeric: tabular-nums;
+  }
+  .lede {
+    margin: 12px 0 18px;
+    font-size: 15px;
+    line-height: 1.55;
+    color: rgba(246, 239, 230, 0.84);
+  }
+  .bar {
+    height: 2px;
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 18px;
+  }
+  .bar div {
+    height: 100%;
+    width: 0;
+    background: #ffc27a;
+    transition: width 0.3s;
+  }
+  skyline-flight:global(.ready) .bar {
+    display: none;
+  }
+  .results {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 0 0 18px;
+  }
+  .results[hidden] {
+    display: none;
+  }
+  .results div {
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.07);
+  }
+  .results dt {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(246, 239, 230, 0.7);
+  }
+  .results dd {
+    margin: 4px 0 0;
+    font-size: 20px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .primary {
+    width: 100%;
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: #24140c;
+    background: linear-gradient(180deg, #ffd9a0, #ffb366);
+    border: 0;
+    border-radius: 12px;
+    padding: 13px 18px;
+    cursor: pointer;
+  }
+  .primary:disabled {
+    opacity: 0.6;
+    cursor: progress;
+  }
+  .primary:not(:disabled):hover {
+    background: linear-gradient(180deg, #ffe4b8, #ffc07c);
+  }
+  button:focus-visible {
+    outline: 2px solid #ffc27a;
+    outline-offset: 3px;
+  }
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 18px;
+    margin: 20px 0 0;
+    font-size: 12px;
+  }
+  .controls div {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 6px;
+  }
+  .controls dt {
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+  .controls dd {
+    margin: 0;
+    color: rgba(246, 239, 230, 0.72);
+    text-align: right;
+  }
+  .controls .touch-only {
+    display: none;
+    grid-column: 1 / -1;
+  }
+  .rule {
+    margin: 14px 0 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: rgba(246, 239, 230, 0.62);
+  }
+
+  .stick,
+  .boost {
+    display: none;
+  }
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  @media (pointer: coarse) {
+    .controls .touch-only {
+      display: flex;
+    }
+    .controls .key {
+      display: none;
+    }
+    skyline-flight:global(.playing) .stick {
+      display: grid;
+      place-items: center;
+      position: absolute;
+      left: max(28px, env(safe-area-inset-left));
+      bottom: max(34px, env(safe-area-inset-bottom));
+      width: 130px;
+      height: 130px;
+      border-radius: 50%;
+      background: rgba(20, 14, 14, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      touch-action: none;
+    }
+    .stick span {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.55);
+      pointer-events: none;
+    }
+    skyline-flight:global(.playing) .boost {
+      display: block;
+      position: absolute;
+      right: max(28px, env(safe-area-inset-right));
+      bottom: max(76px, calc(env(safe-area-inset-bottom) + 56px));
+      width: 92px;
+      height: 92px;
+      border-radius: 50%;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: #24140c;
+      background: rgba(255, 196, 120, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      touch-action: none;
+    }
+    .boost:global(.active) {
+      background: rgba(255, 220, 160, 0.95);
+    }
+    .radar {
+      top: 92px;
+      bottom: auto;
+      width: 100px;
+      height: 100px;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .hud.top-right {
+      gap: 10px;
+    }
+    .hud {
+      top: 48px;
+    }
+    .top-center {
+      top: 104px;
+      width: 56vw;
+    }
+    .tools {
+      top: 10px;
+      bottom: auto;
+      left: 10px;
+      right: 10px;
+      justify-content: center;
+      gap: 4px;
+      max-width: none;
+    }
+    .tools button {
+      padding: 6px 9px;
+      font-size: 10px;
+    }
+    .panel {
+      padding: 24px 20px 20px;
+    }
+    .controls {
+      grid-template-columns: 1fr;
+    }
+    .radar {
+      width: 100px;
+      height: 100px;
+    }
+  }
+
+  @media (max-width: 640px) and (pointer: coarse) {
+    .radar {
+      top: 160px;
+    }
+  }
+</style>
