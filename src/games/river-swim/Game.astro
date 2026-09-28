@@ -1,0 +1,91 @@
+---
+import GameHeader from '../../components/GameHeader.astro';
+---
+<!doctype html>
+<html lang="en" data-game="river-swim">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="description" content="Swim up a realistic alpine river in first person, fighting the current and dodging rocks and drifting logs." />
+  <title>River Swim</title>
+</head>
+<body>
+<GameHeader />
+<river-swim>
+  <canvas tabindex="-1" aria-label="First-person view of an alpine river. Hold the up arrow to swim and use the left and right arrows to steer." aria-describedby="river-status"></canvas>
+  <div class="vignette" aria-hidden="true"></div>
+
+  <div class="hud" aria-hidden="true">
+    <div class="chip hearts" data-hearts>♥♥♥</div>
+    <div class="chip course">
+      <div class="course-label"><strong data-distance>0</strong> / 200 m</div>
+      <div class="track"><div data-progress></div></div>
+    </div>
+    <div class="chip clock"><strong data-time>0.0</strong> s<span>Best <span data-best>—</span></span></div>
+  </div>
+
+  <section class="panel" data-panel>
+    <h1 data-panel-title>River Swim</h1>
+    <p data-panel-text>Loading the river…</p>
+    <button type="button" class="primary" data-start disabled>Start swimming</button>
+    <dl class="controls">
+      <div><dt>↑ / W</dt><dd>Swim</dd></div>
+      <div><dt>← → / A D</dt><dd>Steer</dd></div>
+      <div><dt>↓ / S</dt><dd>Drift back</dd></div>
+      <div><dt>Touch</dt><dd>Hold to swim, drag to steer</dd></div>
+    </dl>
+  </section>
+
+  <button type="button" class="sound" data-sound aria-pressed="true">Sound on</button>
+  <p id="river-status" class="visually-hidden" role="status"></p>
+</river-swim>
+</body>
+</html>
+<script>
+  import './game';
+</script>
+<style>
+  html[data-game="river-swim"] { height: 100%; background: #0b1216; color: #f4f7f6; color-scheme: dark; font-family: "Avenir Next", "Segoe UI", system-ui, sans-serif; }
+  html[data-game="river-swim"] body { margin: 0; height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+
+  river-swim { position: relative; flex: 1; min-height: 0; display: block; overflow: hidden; user-select: none; -webkit-user-select: none; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; outline: none; }
+
+  .vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 55%, rgba(180, 20, 10, .55)); opacity: 0; }
+  river-swim:global(.hurt) .vignette { animation: hurt .6s ease-out; }
+  @keyframes hurt { from { opacity: 1; } to { opacity: 0; } }
+
+  .hud { position: absolute; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: max(14px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left)); pointer-events: none; }
+  .chip { background: rgba(10, 18, 22, .42); backdrop-filter: blur(10px) saturate(1.2); -webkit-backdrop-filter: blur(10px) saturate(1.2); border: 1px solid rgba(255, 255, 255, .14); border-radius: 12px; padding: 8px 14px; font-size: .85rem; letter-spacing: .02em; text-shadow: 0 1px 2px rgba(0, 0, 0, .4); }
+  .hearts { color: #ff8a78; font-size: 1.15rem; letter-spacing: 3px; }
+  .course { flex: 0 1 340px; text-align: center; }
+  .course-label { margin-bottom: 6px; }
+  strong { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+  .track { height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .2); overflow: hidden; }
+  .track div { width: 0; height: 100%; background: linear-gradient(90deg, #7fd8c8, #fff3c4); }
+  .clock { text-align: right; font-variant-numeric: tabular-nums; }
+  .clock { white-space: nowrap; }
+  .clock > span { display: block; font-size: .72rem; opacity: .75; }
+
+  .panel { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); box-sizing: border-box; width: min(440px, calc(100% - 32px)); max-height: calc(100% - 32px); overflow: auto; padding: 28px 28px 22px; border-radius: 20px; background: rgba(8, 16, 20, .5); backdrop-filter: blur(16px) saturate(1.3); -webkit-backdrop-filter: blur(16px) saturate(1.3); border: 1px solid rgba(255, 255, 255, .16); box-shadow: 0 20px 60px rgba(0, 0, 0, .35); text-align: center; }
+  .panel[hidden] { display: none; }
+  h1 { margin: 0 0 8px; font-size: clamp(1.8rem, 5vw, 2.4rem); font-weight: 600; letter-spacing: -.01em; }
+  .panel p { margin: 0 0 20px; line-height: 1.6; color: rgba(244, 247, 246, .85); }
+  .primary { font: inherit; font-weight: 600; font-size: 1rem; cursor: pointer; border: 0; border-radius: 999px; padding: 12px 28px; background: #f4f7f6; color: #0f1d22; }
+  .primary:disabled { opacity: .5; cursor: progress; }
+  .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; margin: 22px 0 0; font-size: .78rem; text-align: left; }
+  .controls div { display: flex; flex-direction: column; }
+  dt { font-weight: 600; }
+  dd { margin: 0; opacity: .75; }
+
+  .sound { position: absolute; right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); font: inherit; font-size: .78rem; cursor: pointer; color: inherit; background: rgba(10, 18, 22, .42); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, .14); border-radius: 999px; padding: 7px 14px; }
+  .sound[hidden] { display: none; }
+  button:focus-visible { outline: 2px solid #fff3c4; outline-offset: 3px; }
+  .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+  @media (max-width: 560px) {
+    .chip { padding: 6px 10px; font-size: .75rem; }
+    .hearts { font-size: 1rem; }
+    .controls { grid-template-columns: 1fr; }
+  }
+</style>
