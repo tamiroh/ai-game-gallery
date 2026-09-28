@@ -59,6 +59,8 @@ export class Kit {
   private normalMatrix = new THREE.Matrix3();
   private stack: THREE.Matrix4[] = [];
   solids: Solid[] = [];
+  /** Edge chamfer applied to boxes (meters); 0 draws plain sharp boxes. */
+  bevel = 0;
 
   private mesher(material: MaterialName) {
     let mesher = this.meshers.get(material);
@@ -109,6 +111,11 @@ export class Kit {
     if (x1 < x0) [x0, x1] = [x1, x0];
     if (y1 < y0) [y0, y1] = [y1, y0];
     if (z1 < z0) [z0, z1] = [z1, z0];
+    const b = options.skip ? 0 : Math.min(this.bevel, (x1 - x0) * 0.3, (y1 - y0) * 0.3, (z1 - z0) * 0.3);
+    if (b > 0.0008) {
+      this.chamferBox(material, [x0, y0, z0], [x1, y1, z1], b, color, options);
+      return;
+    }
     const skip = options.skip ?? '';
     const s = options.shift ?? 0;
     const uv = (u: number, v: number): [number, number] => (options.swap ? [v + s, u + s] : [u + s, v + s]);
@@ -121,11 +128,97 @@ export class Kit {
   }
 
   /**
+   * Box with chamfered edges and corners. Vertices on each strip keep the normal of the face they
+   * touch, so the narrow bevel shades like a rounded edge and catches highlights.
+   */
+  private chamferBox(material: MaterialName, lo: Vec3, hi: Vec3, b: number, color: ColorLike, options: BoxOptions) {
+    const mesher = this.mesher(material);
+    const c = toColor(color);
+    const center = [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2];
+    const h = [(hi[0] - lo[0]) / 2, (hi[1] - lo[1]) / 2, (hi[2] - lo[2]) / 2];
+    const hin = h.map((v) => v - b);
+    const s = options.shift ?? 0;
+    const uvOf = (q: number[], axis: number, sign: number): [number, number] => {
+      const [x, y, z] = q as [number, number, number];
+      let u: number, v: number;
+      if (axis === 0) [u, v] = [sign > 0 ? -z : z, y];
+      else if (axis === 1) [u, v] = [x, sign > 0 ? -z : z];
+      else [u, v] = [sign > 0 ? x : -x, y];
+      return options.swap ? [v + s, u + s] : [u + s, v + s];
+    };
+    const outward = new THREE.Vector3();
+    const e1 = new THREE.Vector3();
+    const e2 = new THREE.Vector3();
+    // points: local offsets from center; axes/signs: the face each vertex belongs to.
+    const poly = (points: number[][], axes: number[], signs: number[], out: number[]) => {
+      e1.set(points[1]![0]! - points[0]![0]!, points[1]![1]! - points[0]![1]!, points[1]![2]! - points[0]![2]!);
+      e2.set(points[2]![0]! - points[0]![0]!, points[2]![1]! - points[0]![1]!, points[2]![2]! - points[0]![2]!);
+      outward.set(out[0]!, out[1]!, out[2]!);
+      const order = e1.cross(e2).dot(outward) < 0 ? [...points.keys()].reverse() : [...points.keys()];
+      const ids = order.map((i) => {
+        const q = points[i]!.map((v, k) => v + center[k]!);
+        const axis = axes[i]!, sign = signs[i]!;
+        n.set(axis === 0 ? sign : 0, axis === 1 ? sign : 0, axis === 2 ? sign : 0).applyMatrix3(this.normalMatrix).normalize();
+        const [u, v] = uvOf(q, axis, sign);
+        return mesher.vertex(p.set(q[0]!, q[1]!, q[2]!).applyMatrix4(this.matrix), n, u, v, c);
+      });
+      for (let i = 1; i < ids.length - 1; i++) mesher.indices.push(ids[0]!, ids[i]!, ids[i + 1]!);
+    };
+    const pt = (k: number, vk: number, a: number, va: number, bb: number, vb: number) => {
+      const q = [0, 0, 0];
+      q[k] = vk; q[a] = va; q[bb] = vb;
+      return q;
+    };
+    for (let k = 0; k < 3; k++) {
+      const a = (k + 1) % 3, bb = (k + 2) % 3;
+      for (const sign of [-1, 1]) {
+        const out = [0, 0, 0];
+        out[k] = sign;
+        const skipKey = `${sign > 0 ? 'p' : 'n'}${'xyz'[k]}`;
+        if (options.skip?.includes(skipKey)) continue;
+        poly([pt(k, sign * h[k]!, a, -hin[a]!, bb, -hin[bb]!), pt(k, sign * h[k]!, a, hin[a]!, bb, -hin[bb]!), pt(k, sign * h[k]!, a, hin[a]!, bb, hin[bb]!), pt(k, sign * h[k]!, a, -hin[a]!, bb, hin[bb]!)], [k, k, k, k], [sign, sign, sign, sign], out);
+      }
+    }
+    // Edge strips.
+    for (const [a, bb, k] of [[0, 1, 2], [0, 2, 1], [1, 2, 0]] as const) {
+      for (const sa of [-1, 1]) for (const sb of [-1, 1]) {
+        const P = (vk: number) => { const q = [0, 0, 0]; q[a] = sa * h[a]!; q[bb] = sb * hin[bb]!; q[k] = vk; return q; };
+        const Q = (vk: number) => { const q = [0, 0, 0]; q[a] = sa * hin[a]!; q[bb] = sb * h[bb]!; q[k] = vk; return q; };
+        const out = [0, 0, 0];
+        out[a] = sa; out[bb] = sb;
+        poly([P(-hin[k]!), P(hin[k]!), Q(hin[k]!), Q(-hin[k]!)], [a, a, bb, bb], [sa, sa, sb, sb], out);
+      }
+    }
+    // Corner triangles.
+    for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) {
+      poly([[sx * h[0]!, sy * hin[1]!, sz * hin[2]!], [sx * hin[0]!, sy * h[1]!, sz * hin[2]!], [sx * hin[0]!, sy * hin[1]!, sz * h[2]!]], [0, 1, 2], [sx, sy, sz], [sx, sy, sz]);
+    }
+  }
+
+  /** Runs `draw` with a different edge chamfer. */
+  withBevel(bevel: number, draw: () => void) {
+    const previous = this.bevel;
+    this.bevel = bevel;
+    try {
+      draw();
+    } finally {
+      this.bevel = previous;
+    }
+  }
+
+  /** Total vertices queued so far, for budgeting. */
+  get vertexCount() {
+    let total = 0;
+    for (const mesher of this.meshers.values()) total += mesher.positions.length / 3;
+    return total;
+  }
+
+  /**
    * Appends a three.js geometry placed by `local` (relative to the current frame).
    * `uv: 'box'` replaces UVs with box projection in the geometry's own meters.
    */
   geometry(material: MaterialName, source: THREE.BufferGeometry, local: THREE.Matrix4 | null, color: ColorLike, uv: 'box' | 'keep' = 'box') {
-    const geometry = source.index ? source.toNonIndexed() : source.clone();
+    const geometry = source.clone();
     if (!geometry.getAttribute('normal')) geometry.computeVertexNormals();
     const position = geometry.getAttribute('position');
     const normal = geometry.getAttribute('normal');
@@ -135,6 +228,7 @@ export class Kit {
     const scale = local ? new THREE.Vector3().setFromMatrixScale(local) : new THREE.Vector3(1, 1, 1);
     const mesher = this.mesher(material);
     const c = toColor(color);
+    const base = mesher.positions.length / 3;
     for (let i = 0; i < position.count; i++) {
       p.fromBufferAttribute(position, i);
       n.fromBufferAttribute(normal, i);
@@ -152,8 +246,12 @@ export class Kit {
       }
       p.applyMatrix4(full);
       n.applyMatrix3(normalMatrix).normalize();
-      mesher.indices.push(mesher.vertex(p, n, u, v, c));
+      mesher.vertex(p, n, u, v, c);
     }
+    // Keep the source's index buffer so smooth meshes share their vertices.
+    const index = geometry.getIndex();
+    if (index) for (let i = 0; i < index.count; i++) mesher.indices.push(base + index.getX(i));
+    else for (let i = 0; i < position.count; i++) mesher.indices.push(base + i);
     geometry.dispose();
   }
 

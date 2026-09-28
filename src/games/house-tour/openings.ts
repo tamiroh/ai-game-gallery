@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Kit } from './kit';
 import type { MaterialName } from './materials';
+import { cylinder, rbox } from './furniture';
 import { CH, FL1, M, OPENINGS, ROOMS, thickness, type Opening } from './plan';
 
 const SASH = 0x3a3531;
@@ -158,9 +159,12 @@ function doorCasing(kit: Kit, o: Opening, color = TRIM, depth?: number) {
 }
 
 function lever(kit: Kit, a: number, y: number, d: number, dir: number, side: number) {
-  kit.box('chrome', a - 0.028, y - 0.028, d, a + 0.028, y + 0.028, d + side * 0.008, 0xcfcfcf);
-  kit.box('chrome', a - 0.008, y - 0.008, d, a + 0.008, y + 0.008, d + side * 0.055, 0xcfcfcf);
-  kit.box('chrome', Math.min(a, a + dir * 0.12), y - 0.009, d + side * 0.045, Math.max(a, a + dir * 0.12), y + 0.009, d + side * 0.063, 0xcfcfcf);
+  const axis = new THREE.Euler(Math.PI / 2, 0, 0);
+  cylinder(kit, 'chrome', a, y, d + side * 0.005, 0.027, 0.027, 0.01, 0xcfcfcf, 28, axis);
+  cylinder(kit, 'chrome', a, y, d + side * 0.03, 0.009, 0.011, 0.045, 0xcfcfcf, 16, axis);
+  rbox(kit, 'chrome', a + dir * 0.065, y, d + side * 0.057, 0.13, 0.017, 0.02, 0.0075, 0xcfcfcf);
+  cylinder(kit, 'chrome', a, y - 0.07, d + side * 0.004, 0.012, 0.012, 0.008, 0xcfcfcf, 20, axis);
+  cylinder(kit, 'matte', a, y - 0.07, d + side * 0.0085, 0.004, 0.004, 0.002, 0x333333, 10, axis);
 }
 
 /** Flush interior door leaf in its own frame: x from 0 to `width` (away from the hinge). */

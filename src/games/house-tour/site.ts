@@ -38,7 +38,7 @@ function fence(kit: Kit, x0: number, x1: number, z: number) {
   kit.solid(x0, z - 0.06, x1, z + 0.06, 0, 1.5);
 }
 
-function leafCluster(kit: Kit, cx: number, cy: number, cz: number, radius: number, count: number, color: THREE.Color, seed: number, size = 0.09) {
+function leafCluster(kit: Kit, cx: number, cy: number, cz: number, radius: number, count: number, color: THREE.Color, seed: number, size = 0.09, mat: 'leaf' | 'maple' = 'leaf') {
   const rng = random(seed);
   const leaf = new THREE.PlaneGeometry(size, size * 1.4);
   const tint = new THREE.Color();
@@ -47,7 +47,7 @@ function leafCluster(kit: Kit, cx: number, cy: number, cz: number, radius: numbe
     const s = Math.sqrt(1 - u * u);
     const x = cx + s * Math.cos(a) * r, y = cy + u * r * 0.7, z = cz + s * Math.sin(a) * r;
     tint.copy(color).multiplyScalar(0.75 + rng() * 0.45);
-    kit.geometry('leaf', leaf, trs(x, y, z, rng() * Math.PI, rng() * Math.PI * 2, rng() * Math.PI), tint, 'keep');
+    kit.geometry(mat, leaf, trs(x, y, z, rng() * Math.PI, rng() * Math.PI * 2, rng() * Math.PI), tint, 'keep');
   }
   leaf.dispose();
 }
@@ -57,18 +57,31 @@ function branch(kit: Kit, a: THREE.Vector3, b: THREE.Vector3, r0: number, r1: nu
   kit.geometry('oak', new THREE.CylinderGeometry(r1, r0, dir.length(), 8), new THREE.Matrix4().compose(a.clone().add(b).multiplyScalar(0.5), new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize()), new THREE.Vector3(1, 1, 1)), color, 'box');
 }
 
-/** A small Japanese maple: slender trunk splitting into a wide, airy crown. */
+/** A small Japanese maple: a leaning trunk that forks four times into an airy crown of palmate leaves. */
 function maple(kit: Kit, x: number, z: number, seed: number, leaves = 0x9c3b22) {
   const rng = random(seed);
-  const base = new THREE.Vector3(x, 0, z);
-  const fork = new THREE.Vector3(x + 0.1, 1.3, z - 0.05);
-  branch(kit, base, fork, 0.09, 0.07, 0x4e4038);
-  for (let i = 0; i < 5; i++) {
-    const a = (i / 5) * Math.PI * 2 + rng();
-    const tip = new THREE.Vector3(fork.x + Math.cos(a) * 0.9, fork.y + 0.9 + rng() * 0.6, fork.z + Math.sin(a) * 0.9);
-    branch(kit, fork, tip, 0.05, 0.02, 0x4e4038);
-    leafCluster(kit, tip.x, tip.y, tip.z, 0.75, 260, new THREE.Color(leaves), seed * 10 + i, 0.08);
-  }
+  const bark = 0x4e4038;
+  const tips: THREE.Vector3[] = [];
+  const grow = (start: THREE.Vector3, dir: THREE.Vector3, length: number, radius: number, depth: number) => {
+    const bend = dir.clone().add(new THREE.Vector3((rng() - 0.5) * 0.35, 0.08, (rng() - 0.5) * 0.35)).normalize();
+    const mid = start.clone().addScaledVector(dir, length * 0.5);
+    const end = mid.clone().addScaledVector(bend, length * 0.5);
+    branch(kit, start, mid, radius, radius * 0.86, bark);
+    branch(kit, mid, end, radius * 0.86, radius * 0.72, bark);
+    if (depth === 0) {
+      tips.push(end);
+      return;
+    }
+    const children = depth > 2 ? 2 : 3;
+    for (let i = 0; i < children; i++) {
+      const a = (i / children) * Math.PI * 2 + rng() * 1.2;
+      const spread = 0.5 + rng() * 0.4;
+      const child = bend.clone().add(new THREE.Vector3(Math.cos(a) * spread, 0.15 + rng() * 0.2, Math.sin(a) * spread)).normalize();
+      grow(end, child, length * (0.62 + rng() * 0.15), radius * 0.66, depth - 1);
+    }
+  };
+  grow(new THREE.Vector3(x, 0, z), new THREE.Vector3(0.12, 1, -0.05).normalize(), 1.15, 0.085, 4);
+  tips.forEach((tip, i) => leafCluster(kit, tip.x, tip.y + 0.05, tip.z, 0.3, 105, new THREE.Color(leaves), seed * 100 + i, 0.075, 'maple'));
   kit.solid(x - 0.2, z - 0.2, x + 0.2, z + 0.2, 0, 3);
 }
 
@@ -82,7 +95,7 @@ function hedge(kit: Kit, x0: number, z0: number, x1: number, z1: number, h: numb
   kit.box('matte', x0 + 0.05, 0, z0 + 0.05, x1 - 0.05, h - 0.05, z1 - 0.05, 0x2d4020);
   const area = (x1 - x0) * (z1 - z0) + ((x1 - x0) + (z1 - z0)) * 2 * h;
   const leaf = new THREE.PlaneGeometry(0.06, 0.08);
-  for (let i = 0; i < area * 900; i++) {
+  for (let i = 0; i < area * 650; i++) {
     const face = rng();
     let x = x0 + rng() * (x1 - x0), y = rng() * h, z = z0 + rng() * (z1 - z0);
     if (face < 0.3) y = h - rng() * 0.05;

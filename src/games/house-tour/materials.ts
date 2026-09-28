@@ -36,7 +36,7 @@ export type MaterialName =
   | ScannedName
   | 'siding' | 'curtain' | 'paper' | 'ceiling' | 'vinyl' | 'bathFloor' | 'bathWall' | 'fusuma' | 'shoji' | 'scroll'
   | 'matte' | 'satin' | 'gloss' | 'lacquer' | 'metal' | 'chrome' | 'sash' | 'glass' | 'frosted' | 'screen'
-  | 'art' | 'kawara' | 'lamp' | 'leaf' | 'sheer' | 'mesh' | 'water';
+  | 'art' | 'maple' | 'kawara' | 'lamp' | 'leaf' | 'sheer' | 'mesh' | 'water';
 
 function canvas(size: number, draw: (ctx: CanvasRenderingContext2D, size: number) => void, height = size) {
   const element = document.createElement('canvas');
@@ -379,6 +379,33 @@ function leafAlpha() {
   });
 }
 
+/** Palmate maple leaf: five pointed lobes on a short stem. */
+function mapleAlpha() {
+  return canvas(128, (ctx, size) => {
+    const c = size / 2;
+    ctx.clearRect(0, 0, size, size);
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    const lobes = [-2.35, -1.2, 0, 1.2, 2.35];
+    const lengths = [0.3, 0.42, 0.47, 0.42, 0.3];
+    const cy = c + size * 0.08;
+    ctx.moveTo(c, cy);
+    lobes.forEach((a, i) => {
+      const l = lengths[i]! * size;
+      const tip = [c + Math.sin(a) * l, cy - Math.cos(a) * l];
+      const left = [c + Math.sin(a - 0.28) * l * 0.45, cy - Math.cos(a - 0.28) * l * 0.45];
+      const right = [c + Math.sin(a + 0.28) * l * 0.45, cy - Math.cos(a + 0.28) * l * 0.45];
+      ctx.lineTo(left[0]!, left[1]!);
+      ctx.lineTo(tip[0]!, tip[1]!);
+      ctx.lineTo(right[0]!, right[1]!);
+      ctx.lineTo(c + Math.sin(a + 0.6) * l * 0.18, cy - Math.cos(a + 0.6) * l * 0.18);
+    });
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillRect(c - 1.5, cy, 3, size * 0.4);
+  });
+}
+
 function toTexture(source: HTMLCanvasElement, color: boolean, anisotropy: number) {
   const texture = new THREE.CanvasTexture(source);
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
@@ -420,6 +447,7 @@ export function createMaterials(manager: THREE.LoadingManager, anisotropy: numbe
   const bathFloorNormal = toTexture(normalFromHeight(tileHeight(512, 8, 5, 2, 2400), 5), false, anisotropy);
   const bathWallNormal = toTexture(normalFromHeight(tileHeight(512, 1, 3, 4), 2), false, anisotropy);
   const leaf = toTexture(leafAlpha(), false, anisotropy);
+  const mapleLeaf = toTexture(mapleAlpha(), false, anisotropy);
   const sidingNormal = toTexture(normalFromHeight(sidingHeight(512), 6), false, anisotropy);
 
   const plain = (params: THREE.MeshStandardMaterialParameters) => new THREE.MeshStandardMaterial({ vertexColors: true, ...params });
@@ -465,6 +493,7 @@ export function createMaterials(manager: THREE.LoadingManager, anisotropy: numbe
     kawara: plain({ roughness: 0.42, metalness: 0.35 }),
     lamp: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff1dc, emissiveIntensity: 2.2, roughness: 0.6, vertexColors: true }),
     leaf: plain({ alphaMap: leaf, alphaTest: 0.5, roughness: 0.7, side: THREE.DoubleSide }),
+    maple: plain({ alphaMap: mapleLeaf, alphaTest: 0.5, roughness: 0.75, side: THREE.DoubleSide }),
     sheer: new THREE.MeshStandardMaterial({ color: 0xf6f4ef, roughness: 1, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false }),
     mesh: new THREE.MeshStandardMaterial({ color: 0x222426, roughness: 0.8, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false }),
     water: new THREE.MeshStandardMaterial({ color: 0x9fc4c8, roughness: 0.03, transparent: true, opacity: 0.55, depthWrite: false }),

@@ -3,6 +3,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { Kit, random, trs, type ColorLike } from './kit';
 import type { MaterialName } from './materials';
 import { CH, D, FL1, FL2, M, W } from './plan';
+import { bentBoard, duvet, puffy } from './soft';
 
 export interface Fixture { position: THREE.Vector3; floor: 1 | 2; intensity: number; range: number }
 
@@ -87,11 +88,19 @@ function airConditioner(kit: Kit, x: number, y: number, z: number, yaw: number) 
 function diningChair(kit: Kit, x: number, y: number, z: number, yaw: number) {
   kit.at(x, y, z, yaw, () => {
     const wood = 0xb88d5f;
-    for (const [lx, lz] of [[-0.19, -0.19], [0.19, -0.19], [-0.19, 0.19], [0.19, 0.19]] as const) kit.box('oak', lx - 0.016, 0, lz - 0.016, lx + 0.016, 0.42, lz + 0.016, wood);
-    kit.box('oak', -0.22, 0.4, -0.22, 0.22, 0.43, 0.22, wood);
-    rbox(kit, 'linen', 0, 0.455, 0.01, 0.4, 0.05, 0.38, 0.02, 0x8a8074);
-    for (const lx of [-0.19, 0.19]) kit.box('oak', lx - 0.016, 0.43, -0.22, lx + 0.016, 0.86, -0.19, wood);
-    for (const y of [0.62, 0.78]) kit.box('oak', -0.19, y, -0.215, 0.19, y + 0.05, -0.195, wood);
+    // Tapered front legs; back legs sweep up into the backrest.
+    for (const lx of [-0.19, 0.19]) {
+      cylinder(kit, 'oak', lx, 0, 0.18, 0.012, 0.018, 0.42, wood, 12);
+      tube(kit, 'oak', [new THREE.Vector3(lx, 0, -0.2), new THREE.Vector3(lx, 0.25, -0.19), new THREE.Vector3(lx, 0.45, -0.19), new THREE.Vector3(lx * 0.97, 0.66, -0.23), new THREE.Vector3(lx * 0.95, 0.86, -0.27)], 0.016, wood);
+    }
+    // Stretchers.
+    for (const [zz, yy] of [[0.18, 0.14], [-0.19, 0.14]] as const) cylinder(kit, 'oak', 0, yy, zz, 0.009, 0.009, 0.38, wood, 8, new THREE.Euler(0, 0, Math.PI / 2));
+    for (const lx of [-0.19, 0.19]) cylinder(kit, 'oak', lx, 0.1, -0.005, 0.009, 0.009, 0.38, wood, 8, new THREE.Euler(Math.PI / 2, 0, 0));
+    // Seat board, upholstered pad, curved back rails.
+    rbox(kit, 'oak', 0, 0.415, 0, 0.44, 0.03, 0.42, 0.012, wood);
+    puffy(kit, 'linen', 0, 0.448, 0.01, 0.4, 0.04, 0.38, 0x8a8074, 0.6);
+    bentBoard(kit, 'oak', 0, 0.8, -0.26, 0.4, 0.09, 0.02, -0.035, wood, -0.2);
+    bentBoard(kit, 'oak', 0, 0.63, -0.22, 0.4, 0.05, 0.018, -0.035, wood, -0.2);
     kit.solid(-0.23, -0.23, 0.23, 0.23, 0, 0.9);
   });
 }
@@ -115,11 +124,11 @@ function sofa(kit: Kit, x: number, y: number, z: number, yaw: number, w: number,
     const sw = (w - 0.4) / seats;
     for (let i = 0; i < seats; i++) {
       const cx = -w / 2 + 0.2 + sw * (i + 0.5);
-      rbox(kit, 'linen', cx, 0.44, 0.08, sw - 0.01, 0.15, d - 0.26, 0.06, color);
-      rbox(kit, 'linen', cx, 0.7, -d / 2 + 0.3, sw - 0.02, 0.44, 0.18, 0.08, color, new THREE.Euler(-0.14, 0, 0));
+      puffy(kit, 'linen', cx, 0.44, 0.08, sw - 0.01, 0.16, d - 0.26, color, 0.45);
+      puffy(kit, 'linen', cx, 0.71, -d / 2 + 0.3, sw - 0.02, 0.2, 0.44, color, 0.7, new THREE.Euler(-Math.PI / 2 - 0.14, 0, 0));
     }
-    rbox(kit, 'boucle', -w / 2 + 0.42, 0.66, -0.12, 0.42, 0.4, 0.14, 0.07, 0xd8cdb8, new THREE.Euler(-0.25, 0.3, 0.05));
-    rbox(kit, 'linen', w / 2 - 0.45, 0.64, -0.12, 0.4, 0.38, 0.13, 0.06, 0x5d6f78, new THREE.Euler(-0.2, -0.2, -0.04));
+    puffy(kit, 'boucle', -w / 2 + 0.42, 0.68, -0.1, 0.42, 0.15, 0.42, 0xd8cdb8, 1, new THREE.Euler(-Math.PI / 2 - 0.3, 0.3, 0.05));
+    puffy(kit, 'linen', w / 2 - 0.45, 0.66, -0.1, 0.4, 0.14, 0.4, 0x5d6f78, 1, new THREE.Euler(-Math.PI / 2 - 0.25, -0.2, -0.04));
     // Knitted throw folded over one arm.
     rbox(kit, 'boucle', -w / 2 + 0.1, 0.695, 0.08, 0.3, 0.035, 0.62, 0.015, 0x8b5e4a);
     rbox(kit, 'boucle', -w / 2 - 0.012, 0.5, 0.08, 0.03, 0.4, 0.62, 0.012, 0x8b5e4a);
@@ -152,6 +161,10 @@ function cabinet(kit: Kit, w: number, h: number, d: number, doors: number, color
 }
 
 export function books(kit: Kit, x0: number, x1: number, y: number, z: number, depth: number, maxH: number, seed: number) {
+  kit.withBevel(0, () => bookRow(kit, x0, x1, y, z, depth, maxH, seed));
+}
+
+function bookRow(kit: Kit, x0: number, x1: number, y: number, z: number, depth: number, maxH: number, seed: number) {
   const rng = random(seed);
   const palette = [0x7b2d26, 0x2d4a6b, 0xd9d2c1, 0x3c5a3a, 0xc2a36b, 0x1f1f22, 0x8f6b8a, 0xe6e1d4, 0x9a4c2c, 0x5b6770];
   let x = x0 + 0.01;
@@ -562,7 +575,7 @@ function washitsuFurniture(kit: Kit, fixtures: Fixture[]) {
     for (const [cx, cz] of [[0.18, -0.12], [0.25, 0.08]] as const) lathe(kit, 'gloss', [[0, 0], [0.025, 0], [0.032, 0.06], [0.029, 0.06], [0, 0.006]], cx, 0.34, cz, 0xe9e1cf, 16);
     kit.box('lacquer', -0.4, 0.34, 0.12, -0.2, 0.345, 0.26, 0x2a1b12);
     for (const [zx, zz, yaw] of [[0, -0.68, 0], [0, 0.68, 0], [-0.9, 0, Math.PI / 2], [0.9, 0, Math.PI / 2]] as const) {
-      rbox(kit, 'linen', zx, 0.035, zz, 0.55, 0.07, 0.59, 0.03, 0x6d3a3a, new THREE.Euler(0, yaw, 0));
+      puffy(kit, 'linen', zx, 0.04, zz, 0.55, 0.08, 0.59, 0x6d3a3a, 0.9, new THREE.Euler(0, yaw, 0));
       kit.box('linen', zx - 0.01, 0.07, zz - 0.01, zx + 0.01, 0.075, zz + 0.01, 0xd9c29e);
     }
   });
@@ -655,7 +668,7 @@ function genkan(kit: Kit, fixtures: Fixture[]) {
 
 // ——— Upstairs ———
 
-function bed(kit: Kit, x: number, y: number, z: number, yaw: number, w: number, duvet: number, seed: number) {
+function bed(kit: Kit, x: number, y: number, z: number, yaw: number, w: number, cover: number, seed: number) {
   const rng = random(seed);
   kit.at(x, y, z, yaw, () => {
     const l = 2.0;
@@ -664,14 +677,14 @@ function bed(kit: Kit, x: number, y: number, z: number, yaw: number, w: number, 
     kit.box('walnut', -w / 2 - 0.03, 0, -l / 2 - 0.05, w / 2 + 0.03, 0.9, -l / 2, 0x6a4c38, { swap: true });
     for (const [lx, lz] of [[-1, 1], [1, 1]] as const) kit.box('walnut', lx * (w / 2) - 0.02, 0, lz * l / 2 - 0.02, lx * (w / 2) + 0.02, 0.1, lz * l / 2 + 0.02, 0x5a3e2c);
     rbox(kit, 'linen', 0, 0.39, 0.0, w, 0.2, l - 0.02, 0.05, 0xf2f0ea);
-    // Duvet with a folded-back top edge and a runner at the foot.
-    rbox(kit, 'linen', 0, 0.5, 0.18, w + 0.08, 0.1, l - 0.4, 0.05, duvet);
-    rbox(kit, 'linen', 0, 0.535, -0.08, w + 0.06, 0.05, 0.22, 0.025, new THREE.Color(duvet).lerp(new THREE.Color(0xffffff), 0.5));
-    rbox(kit, 'linen', 0, 0.56, l / 2 - 0.3, w + 0.1, 0.02, 0.4, 0.01, 0x55483e);
+    // Draped duvet with its turned-down top edge, and a runner across the foot.
+    duvet(kit, w, l / 2 - 0.01, -l / 2 + 0.55, 0.49, 0.3, cover, seed);
+    puffy(kit, 'linen', 0, 0.56, -l / 2 + 0.6, w + 0.1, 0.06, 0.2, new THREE.Color(cover).lerp(new THREE.Color(0xffffff), 0.55), 0.8);
+    rbox(kit, 'linen', 0, 0.585, l / 2 - 0.35, w + 0.12, 0.016, 0.42, 0.008, 0x55483e);
     const pillows = w > 1.2 ? 2 : 1;
     for (let i = 0; i < pillows; i++) {
       const px = pillows === 1 ? 0 : (i - 0.5) * (w / 2);
-      rbox(kit, 'linen', px, 0.56, -l / 2 + 0.28, Math.min(0.62, w - 0.12), 0.13, 0.4, 0.06, 0xfbfaf6, new THREE.Euler(-0.12 + rng() * 0.05, (rng() - 0.5) * 0.08, 0));
+      puffy(kit, 'linen', px, 0.56, -l / 2 + 0.27, Math.min(0.62, w - 0.12), 0.15, 0.42, 0xfbfaf6, 1, new THREE.Euler(-0.18 + rng() * 0.06, (rng() - 0.5) * 0.1, (rng() - 0.5) * 0.04));
     }
     kit.solid(-w / 2 - 0.05, -l / 2 - 0.05, w / 2 + 0.05, l / 2 + 0.05, 0, 0.6);
   });

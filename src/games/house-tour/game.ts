@@ -12,6 +12,7 @@ import { buildHouse } from './house';
 import { buildOpenings } from './openings';
 import { buildFurniture, releaseShapes, type Fixture } from './furniture';
 import { buildDetails } from './details';
+import { releaseSoft } from './soft';
 import { buildSite, SITE } from './site';
 import { drawPlan, roomAt } from './hud';
 import { GROUNDS, SPAWN, STAIR, stairHeight } from './plan';
@@ -161,12 +162,14 @@ function start(root: HTMLElement) {
 
   // Build everything into merged meshes, one per material.
   const kit = new Kit();
+  kit.bevel = 0.004;
   const house = buildHouse(kit);
   buildOpenings(kit);
   const fixtures: Fixture[] = buildFurniture(kit);
-  buildSite(kit);
+  kit.withBevel(0, () => buildSite(kit));
   buildDetails(kit);
   releaseShapes();
+  releaseSoft();
   const world = kit.build(materials, shadowFlags);
   scene.add(world);
   const solids: Solid[] = [...house.solids, ...kit.solids];
