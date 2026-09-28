@@ -1,116 +1,414 @@
 ---
-import GameHeader from '../../components/GameHeader.astro';
+import GameHeader from "../../components/GameHeader.astro";
 ---
+
 <!doctype html>
 <html lang="en" data-game="house-tour">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="description" content="Tour a detailed two-storey Japanese house in first person: genkan, tatami room, open-plan living, bath, bedrooms and balcony." />
-  <title>House Tour</title>
-</head>
-<body>
-<GameHeader />
-<house-tour>
-  <canvas class="world" tabindex="-1" aria-label="First-person view inside a Japanese house. Use W A S D to walk and the mouse to look around." aria-describedby="tour-controls"></canvas>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      name="description"
+      content="Tour a detailed two-storey Japanese house in first person: genkan, tatami room, open-plan living, bath, bedrooms and balcony."
+    />
+    <title>House Tour</title>
+  </head>
+  <body>
+    <GameHeader />
+    <house-tour>
+      <canvas
+        class="world"
+        tabindex="-1"
+        aria-label="First-person view inside a Japanese house. Use W A S D to walk and the mouse to look around."
+        aria-describedby="tour-controls"
+      ></canvas>
 
-  <div class="room" aria-live="polite">
-    <strong data-room>Front Gate</strong>
-    <span data-room-info>Outside</span>
-  </div>
+      <div class="room" aria-live="polite">
+        <strong data-room>Front Gate</strong>
+        <span data-room-info>Outside</span>
+      </div>
 
-  <div class="plan-box" data-plan aria-hidden="true">
-    <canvas class="plan"></canvas>
-  </div>
+      <div class="plan-box" data-plan aria-hidden="true">
+        <canvas class="plan"></canvas>
+      </div>
 
-  <div class="tools">
-    <button type="button" data-lights aria-pressed="true">Lights: On</button>
-    <button type="button" data-plan-toggle aria-pressed="true">Floor plan</button>
-    <button type="button" data-quality>Graphics: High</button>
-    <button type="button" data-reset>Restart</button>
-  </div>
+      <div class="tools">
+        <button type="button" data-lights aria-pressed="true">
+          Lights: On
+        </button>
+        <button type="button" data-plan-toggle aria-pressed="true">
+          Floor plan
+        </button>
+        <button type="button" data-quality>
+          Graphics: High
+        </button>
+        <button type="button" data-reset>
+          Restart
+        </button>
+      </div>
 
-  <section class="panel" data-panel>
-    <p class="kicker">Open house · 4LDK · two storeys</p>
-    <h1 data-panel-title>House Tour</h1>
-    <p class="lede" data-panel-text>Preparing the house…</p>
-    <div class="bar" aria-hidden="true"><div data-progress></div></div>
-    <button type="button" class="primary" data-start disabled>Loading…</button>
-    <dl class="controls" id="tour-controls">
-      <div class="key"><dt>W A S D</dt><dd>Walk</dd></div>
-      <div class="key"><dt>Mouse</dt><dd>Look around</dd></div>
-      <div class="key"><dt>Shift</dt><dd>Walk faster</dd></div>
-      <div class="key"><dt>← → / Q E</dt><dd>Turn</dd></div>
-      <div class="key"><dt>L</dt><dd>Room lights</dd></div>
-      <div class="key"><dt>M</dt><dd>Floor plan</dd></div>
-      <div class="key"><dt>R</dt><dd>Back to the gate</dd></div>
-      <div class="key"><dt>Esc</dt><dd>Pause</dd></div>
-      <div class="touch-only"><dt>Touch</dt><dd>Left stick walks, drag to look</dd></div>
-    </dl>
-  </section>
+      <section class="panel" data-panel>
+        <p class="kicker">Open house · 4LDK · two storeys</p>
+        <h1 data-panel-title>House Tour</h1>
+        <p class="lede" data-panel-text>
+          Preparing the house…
+        </p>
+        <div class="bar" aria-hidden="true">
+          <div data-progress></div>
+        </div>
+        <button type="button" class="primary" data-start disabled>
+          Loading…
+        </button>
+        <dl class="controls" id="tour-controls">
+          <div class="key">
+            <dt>W A S D</dt>
+            <dd>Walk</dd>
+          </div>
+          <div class="key">
+            <dt>Mouse</dt>
+            <dd>Look around</dd>
+          </div>
+          <div class="key">
+            <dt>Shift</dt>
+            <dd>Walk faster</dd>
+          </div>
+          <div class="key">
+            <dt>← → / Q E</dt>
+            <dd>Turn</dd>
+          </div>
+          <div class="key">
+            <dt>L</dt>
+            <dd>Room lights</dd>
+          </div>
+          <div class="key">
+            <dt>M</dt>
+            <dd>Floor plan</dd>
+          </div>
+          <div class="key">
+            <dt>R</dt>
+            <dd>Back to the gate</dd>
+          </div>
+          <div class="key">
+            <dt>Esc</dt>
+            <dd>Pause</dd>
+          </div>
+          <div class="touch-only">
+            <dt>Touch</dt>
+            <dd>Left stick walks, drag to look</dd>
+          </div>
+        </dl>
+      </section>
 
-  <div class="stick" data-stick aria-hidden="true"><span></span></div>
-  <p class="visually-hidden" role="status" data-status></p>
-</house-tour>
-<script>
-  import './game';
-</script>
-</body>
+      <div class="stick" data-stick aria-hidden="true">
+        <span></span>
+      </div>
+      <p class="visually-hidden" role="status" data-status></p>
+    </house-tour>
+    <script>
+      import "./game";
+    </script>
+  </body>
 </html>
 <style>
-  html[data-game="house-tour"] { height: 100%; background: #14120f; color: #f5f1e8; color-scheme: dark; font-family: "Hiragino Sans", "Helvetica Neue", "Segoe UI", system-ui, sans-serif; }
-  html[data-game="house-tour"] body { margin: 0; height: 100%; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+  html[data-game="house-tour"] {
+    height: 100%;
+    background: #14120f;
+    color: #f5f1e8;
+    color-scheme: dark;
+    font-family: "Hiragino Sans", "Helvetica Neue", "Segoe UI", system-ui, sans-serif;
+  }
+  html[data-game="house-tour"] body {
+    margin: 0;
+    height: 100%;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
 
-  house-tour { position: relative; flex: 1; min-height: 0; display: block; overflow: hidden; background: #b9b3a6; user-select: none; -webkit-user-select: none; }
-  .world { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; outline: none; }
+  house-tour {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    display: block;
+    overflow: hidden;
+    background: #b9b3a6;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .world {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    touch-action: none;
+    outline: none;
+  }
 
-  .room { position: absolute; left: max(22px, env(safe-area-inset-left)); bottom: max(22px, env(safe-area-inset-bottom)); padding: 12px 16px 11px; border-left: 3px solid #c9a46a; background: rgba(20, 18, 15, .5); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 0 10px 10px 0; opacity: 0; transition: opacity .6s; pointer-events: none; }
-  .room strong { display: block; font-family: "Hiragino Mincho ProN", "Yu Mincho", Georgia, serif; font-weight: 500; font-size: clamp(19px, 2.2vw, 26px); letter-spacing: .01em; }
-  .room span { display: block; margin-top: 3px; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: rgba(245, 241, 232, .78); }
+  .room {
+    position: absolute;
+    left: max(22px, env(safe-area-inset-left));
+    bottom: max(22px, env(safe-area-inset-bottom));
+    padding: 12px 16px 11px;
+    border-left: 3px solid #c9a46a;
+    background: rgba(20, 18, 15, 0.5);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 0 10px 10px 0;
+    opacity: 0;
+    transition: opacity 0.6s;
+    pointer-events: none;
+  }
+  .room strong {
+    display: block;
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", Georgia, serif;
+    font-weight: 500;
+    font-size: clamp(19px, 2.2vw, 26px);
+    letter-spacing: 0.01em;
+  }
+  .room span {
+    display: block;
+    margin-top: 3px;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(245, 241, 232, 0.78);
+  }
 
-  .plan-box { position: absolute; top: 16px; right: max(16px, env(safe-area-inset-right)); width: 250px; height: 214px; padding: 0; border-radius: 12px; background: #f7f4ee; box-shadow: 0 10px 30px rgba(0, 0, 0, .3); opacity: 0; transition: opacity .6s; pointer-events: none; overflow: hidden; }
-  canvas.plan { display: block; width: 100%; height: 100%; }
-  house-tour:global(.playing) .room, house-tour:global(.playing) .plan-box:not(:global(.hidden)) { opacity: 1; }
+  .plan-box {
+    position: absolute;
+    top: 16px;
+    right: max(16px, env(safe-area-inset-right));
+    width: 250px;
+    height: 214px;
+    padding: 0;
+    border-radius: 12px;
+    background: #f7f4ee;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    opacity: 0;
+    transition: opacity 0.6s;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  canvas.plan {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  house-tour:global(.playing) .room,
+  house-tour:global(.playing) .plan-box:not(:global(.hidden)) {
+    opacity: 1;
+  }
 
-  .tools { position: absolute; right: max(18px, env(safe-area-inset-right)); bottom: max(20px, env(safe-area-inset-bottom)); display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
-  .tools button { font: inherit; font-size: 11px; letter-spacing: .04em; color: #f5f1e8; background: rgba(20, 18, 15, .5); border: 1px solid rgba(255, 255, 255, .2); border-radius: 999px; padding: 7px 12px; cursor: pointer; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
-  .tools button:hover { background: rgba(20, 18, 15, .74); }
+  .tools {
+    position: absolute;
+    right: max(18px, env(safe-area-inset-right));
+    bottom: max(20px, env(safe-area-inset-bottom));
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .tools button {
+    font: inherit;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: #f5f1e8;
+    background: rgba(20, 18, 15, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 999px;
+    padding: 7px 12px;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  .tools button:hover {
+    background: rgba(20, 18, 15, 0.74);
+  }
 
-  .panel { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(470px, calc(100% - 32px)); box-sizing: border-box; max-height: calc(100% - 32px); overflow: auto; padding: 30px 32px 26px; background: rgba(24, 21, 17, .76); border: 1px solid rgba(255, 255, 255, .12); border-radius: 18px; backdrop-filter: blur(18px) saturate(1.1); -webkit-backdrop-filter: blur(18px) saturate(1.1); box-shadow: 0 24px 80px rgba(0, 0, 0, .45); }
-  .panel[hidden] { display: none; }
-  .kicker { margin: 0 0 10px; font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: #d9b67c; }
-  h1 { margin: 0; font-family: "Hiragino Mincho ProN", "Yu Mincho", Georgia, serif; font-weight: 500; font-size: clamp(34px, 5vw, 46px); letter-spacing: -.01em; line-height: 1.05; }
-  .lede { margin: 12px 0 18px; font-size: 15px; line-height: 1.6; color: rgba(245, 241, 232, .82); }
-  .bar { height: 2px; background: rgba(255, 255, 255, .12); border-radius: 2px; overflow: hidden; margin-bottom: 18px; }
-  .bar div { height: 100%; width: 0; background: #d9b67c; transition: width .3s; }
-  house-tour:global(.ready) .bar { visibility: hidden; }
-  .primary { width: 100%; font: inherit; font-size: 15px; font-weight: 600; letter-spacing: .02em; color: #1b1814; background: #f3ecdf; border: 0; border-radius: 12px; padding: 13px 18px; cursor: pointer; }
-  .primary:disabled { opacity: .6; cursor: progress; }
-  .primary:not(:disabled):hover { background: #fff; }
-  button:focus-visible { outline: 2px solid #d9b67c; outline-offset: 3px; }
-  .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; margin: 20px 0 0; font-size: 12px; }
-  .controls div { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px solid rgba(255, 255, 255, .08); padding-bottom: 6px; }
-  .controls dt { font-weight: 600; letter-spacing: .06em; color: #f5f1e8; }
-  .controls dd { margin: 0; color: rgba(245, 241, 232, .7); text-align: right; }
-  .controls .touch-only { display: none; grid-column: 1 / -1; }
+  .panel {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: min(470px, calc(100% - 32px));
+    box-sizing: border-box;
+    max-height: calc(100% - 32px);
+    overflow: auto;
+    padding: 30px 32px 26px;
+    background: rgba(24, 21, 17, 0.76);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 18px;
+    backdrop-filter: blur(18px) saturate(1.1);
+    -webkit-backdrop-filter: blur(18px) saturate(1.1);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+  }
+  .panel[hidden] {
+    display: none;
+  }
+  .kicker {
+    margin: 0 0 10px;
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #d9b67c;
+  }
+  h1 {
+    margin: 0;
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", Georgia, serif;
+    font-weight: 500;
+    font-size: clamp(34px, 5vw, 46px);
+    letter-spacing: -0.01em;
+    line-height: 1.05;
+  }
+  .lede {
+    margin: 12px 0 18px;
+    font-size: 15px;
+    line-height: 1.6;
+    color: rgba(245, 241, 232, 0.82);
+  }
+  .bar {
+    height: 2px;
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 18px;
+  }
+  .bar div {
+    height: 100%;
+    width: 0;
+    background: #d9b67c;
+    transition: width 0.3s;
+  }
+  house-tour:global(.ready) .bar {
+    visibility: hidden;
+  }
+  .primary {
+    width: 100%;
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: #1b1814;
+    background: #f3ecdf;
+    border: 0;
+    border-radius: 12px;
+    padding: 13px 18px;
+    cursor: pointer;
+  }
+  .primary:disabled {
+    opacity: 0.6;
+    cursor: progress;
+  }
+  .primary:not(:disabled):hover {
+    background: #fff;
+  }
+  button:focus-visible {
+    outline: 2px solid #d9b67c;
+    outline-offset: 3px;
+  }
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 18px;
+    margin: 20px 0 0;
+    font-size: 12px;
+  }
+  .controls div {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 6px;
+  }
+  .controls dt {
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: #f5f1e8;
+  }
+  .controls dd {
+    margin: 0;
+    color: rgba(245, 241, 232, 0.7);
+    text-align: right;
+  }
+  .controls .touch-only {
+    display: none;
+    grid-column: 1 / -1;
+  }
 
-  .stick { display: none; }
-  .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .stick {
+    display: none;
+  }
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
 
   @media (pointer: coarse) {
-    .controls .touch-only { display: flex; }
-    .controls .key { display: none; }
-    house-tour:global(.playing) .stick { display: grid; place-items: center; position: absolute; left: max(28px, env(safe-area-inset-left)); bottom: max(34px, calc(env(safe-area-inset-bottom) + 20px)); width: 120px; height: 120px; border-radius: 50%; background: rgba(20, 18, 15, .28); border: 1px solid rgba(255, 255, 255, .35); touch-action: none; }
-    .stick span { width: 46px; height: 46px; border-radius: 50%; background: rgba(255, 255, 255, .55); pointer-events: none; }
-    .room { top: 16px; bottom: auto; left: 16px; }
-    .plan-box { width: 170px; height: 146px; }
+    .controls .touch-only {
+      display: flex;
+    }
+    .controls .key {
+      display: none;
+    }
+    house-tour:global(.playing) .stick {
+      display: grid;
+      place-items: center;
+      position: absolute;
+      left: max(28px, env(safe-area-inset-left));
+      bottom: max(34px, calc(env(safe-area-inset-bottom) + 20px));
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: rgba(20, 18, 15, 0.28);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      touch-action: none;
+    }
+    .stick span {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.55);
+      pointer-events: none;
+    }
+    .room {
+      top: 16px;
+      bottom: auto;
+      left: 16px;
+    }
+    .plan-box {
+      width: 170px;
+      height: 146px;
+    }
   }
 
   @media (max-width: 640px) {
-    .tools { right: 12px; bottom: 14px; gap: 4px; max-width: 60%; }
-    .tools button { padding: 6px 9px; font-size: 10px; }
-    .panel { padding: 24px 20px 20px; }
-    .controls { grid-template-columns: 1fr; }
-    .plan-box { width: 160px; height: 138px; top: 12px; right: 12px; }
+    .tools {
+      right: 12px;
+      bottom: 14px;
+      gap: 4px;
+      max-width: 60%;
+    }
+    .tools button {
+      padding: 6px 9px;
+      font-size: 10px;
+    }
+    .panel {
+      padding: 24px 20px 20px;
+    }
+    .controls {
+      grid-template-columns: 1fr;
+    }
+    .plan-box {
+      width: 160px;
+      height: 138px;
+      top: 12px;
+      right: 12px;
+    }
   }
 </style>

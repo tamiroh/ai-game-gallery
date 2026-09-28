@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from "three";
 
 type Vec3 = [number, number, number];
 
@@ -32,7 +32,14 @@ export class Builder {
    * Vertical wall. `left` and `right` are the bottom corners as seen from outside;
    * u runs along the wall in `uScale` units and v runs up from `vBase` in `vScale` units.
    */
-  wall(left: [number, number], right: [number, number], y0: number, y1: number, color: THREE.Color, opts: { uScale?: number; vScale?: number; vBase?: number; uSnap?: number; seed?: number } = {}) {
+  wall(
+    left: [number, number],
+    right: [number, number],
+    y0: number,
+    y1: number,
+    color: THREE.Color,
+    opts: { uScale?: number; vScale?: number; vBase?: number; uSnap?: number; seed?: number } = {},
+  ) {
     const dx = right[0] - left[0];
     const dz = right[1] - left[1];
     const length = Math.hypot(dx, dz);
@@ -44,16 +51,35 @@ export class Builder {
     const v0 = (y0 - vBase) / vScale;
     const v1 = (y1 - vBase) / vScale;
     this.quad(
-      [[left[0], y0, left[1]], [right[0], y0, right[1]], [right[0], y1, right[1]], [left[0], y1, left[1]]],
+      [
+        [left[0], y0, left[1]],
+        [right[0], y0, right[1]],
+        [right[0], y1, right[1]],
+        [left[0], y1, left[1]],
+      ],
       normal,
-      [[0, v0], [u, v0], [u, v1], [0, v1]],
+      [
+        [0, v0],
+        [u, v0],
+        [u, v1],
+        [0, v1],
+      ],
       color,
       opts.seed,
     );
   }
 
   /** Four walls of an axis-aligned prism. */
-  walls(x0: number, z0: number, x1: number, z1: number, y0: number, y1: number, color: THREE.Color, opts: Parameters<Builder['wall']>[5] = {}) {
+  walls(
+    x0: number,
+    z0: number,
+    x1: number,
+    z1: number,
+    y0: number,
+    y1: number,
+    color: THREE.Color,
+    opts: Parameters<Builder["wall"]>[5] = {},
+  ) {
     this.wall([x0, z1], [x1, z1], y0, y1, color, opts);
     this.wall([x1, z1], [x1, z0], y0, y1, color, opts);
     this.wall([x1, z0], [x0, z0], y0, y1, color, opts);
@@ -64,13 +90,38 @@ export class Builder {
   cap(x0: number, z0: number, x1: number, z1: number, y: number, color: THREE.Color, uvScale = 1, down = false) {
     const uv = (x: number, z: number): [number, number] => [x / uvScale, -z / uvScale];
     const corners: [Vec3, Vec3, Vec3, Vec3] = down
-      ? [[x0, y, z0], [x1, y, z0], [x1, y, z1], [x0, y, z1]]
-      : [[x0, y, z1], [x1, y, z1], [x1, y, z0], [x0, y, z0]];
-    this.quad(corners, [0, down ? -1 : 1, 0], corners.map(([x, , z]) => uv(x, z)), color);
+      ? [
+          [x0, y, z0],
+          [x1, y, z0],
+          [x1, y, z1],
+          [x0, y, z1],
+        ]
+      : [
+          [x0, y, z1],
+          [x1, y, z1],
+          [x1, y, z0],
+          [x0, y, z0],
+        ];
+    this.quad(
+      corners,
+      [0, down ? -1 : 1, 0],
+      corners.map(([x, , z]) => uv(x, z)),
+      color,
+    );
   }
 
   /** Axis-aligned box with world-space UVs on every face. */
-  box(x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, color: THREE.Color, uvScale = 1, bottom = false) {
+  box(
+    x0: number,
+    y0: number,
+    z0: number,
+    x1: number,
+    y1: number,
+    z1: number,
+    color: THREE.Color,
+    uvScale = 1,
+    bottom = false,
+  ) {
     this.walls(x0, z0, x1, z1, y0, y1, color, { uScale: uvScale, vScale: uvScale, vBase: 0 });
     this.cap(x0, z0, x1, z1, y1, color, uvScale);
     if (bottom) this.cap(x0, z0, x1, z1, y0, color, uvScale, true);
@@ -80,9 +131,9 @@ export class Builder {
   geometry(source: THREE.BufferGeometry, matrix: THREE.Matrix4, color: THREE.Color, seed = 0) {
     const geometry = source.index ? source.toNonIndexed() : source.clone();
     geometry.applyMatrix4(matrix);
-    const position = geometry.getAttribute('position');
-    const normal = geometry.getAttribute('normal');
-    const uv = geometry.getAttribute('uv');
+    const position = geometry.getAttribute("position");
+    const normal = geometry.getAttribute("normal");
+    const uv = geometry.getAttribute("uv");
     const base = this.positions.length / 3;
     for (let i = 0; i < position.count; i++) {
       this.positions.push(position.getX(i), position.getY(i), position.getZ(i));
@@ -97,12 +148,16 @@ export class Builder {
 
   build() {
     const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(this.positions, 3));
-    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(this.normals, 3));
-    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(this.uvs, 2));
-    geometry.setAttribute('color', new THREE.Float32BufferAttribute(this.colors, 3));
-    geometry.setAttribute('seed', new THREE.Float32BufferAttribute(this.seeds, 1));
-    geometry.setIndex(this.indices.length > 65535 ? new THREE.Uint32BufferAttribute(this.indices, 1) : new THREE.Uint16BufferAttribute(this.indices, 1));
+    geometry.setAttribute("position", new THREE.Float32BufferAttribute(this.positions, 3));
+    geometry.setAttribute("normal", new THREE.Float32BufferAttribute(this.normals, 3));
+    geometry.setAttribute("uv", new THREE.Float32BufferAttribute(this.uvs, 2));
+    geometry.setAttribute("color", new THREE.Float32BufferAttribute(this.colors, 3));
+    geometry.setAttribute("seed", new THREE.Float32BufferAttribute(this.seeds, 1));
+    geometry.setIndex(
+      this.indices.length > 65535
+        ? new THREE.Uint32BufferAttribute(this.indices, 1)
+        : new THREE.Uint16BufferAttribute(this.indices, 1),
+    );
     geometry.computeBoundingSphere();
     return geometry;
   }

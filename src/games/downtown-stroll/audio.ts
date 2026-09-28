@@ -30,27 +30,28 @@ export function createAudio() {
     source.start();
     return { filter, gain };
   };
-  loop(noise, 'lowpass', 320, 0.5, 0.55);
-  const hum = loop(noise, 'bandpass', 900, 0.6, 0.12);
-  const traffic = loop(white, 'bandpass', 600, 0.8, 0);
-  const engine = loop(noise, 'lowpass', 140, 1.2, 0);
+  loop(noise, "lowpass", 320, 0.5, 0.55);
+  const hum = loop(noise, "bandpass", 900, 0.6, 0.12);
+  const traffic = loop(white, "bandpass", 600, 0.8, 0);
+  const engine = loop(noise, "lowpass", 140, 1.2, 0);
 
   let enabled = false;
 
-  const step = (running: boolean, surface: 'stone' | 'asphalt' | 'grass') => {
+  const step = (running: boolean, surface: "stone" | "asphalt" | "grass") => {
     if (!enabled) return;
     const now = context.currentTime;
     const source = context.createBufferSource();
     source.buffer = white;
     const filter = context.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.frequency.value = (surface === 'grass' ? 700 : surface === 'asphalt' ? 1300 : 1900) * (0.85 + Math.random() * 0.3);
-    filter.Q.value = surface === 'grass' ? 0.6 : 1.1;
+    filter.type = "bandpass";
+    filter.frequency.value =
+      (surface === "grass" ? 700 : surface === "asphalt" ? 1300 : 1900) * (0.85 + Math.random() * 0.3);
+    filter.Q.value = surface === "grass" ? 0.6 : 1.1;
     const gain = context.createGain();
-    const level = (running ? 0.5 : 0.32) * (surface === 'grass' ? 0.6 : 1);
+    const level = (running ? 0.5 : 0.32) * (surface === "grass" ? 0.6 : 1);
     gain.gain.setValueAtTime(0, now);
     gain.gain.linearRampToValueAtTime(level, now + 0.006);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + (surface === 'grass' ? 0.16 : 0.09));
+    gain.gain.exponentialRampToValueAtTime(0.001, now + (surface === "grass" ? 0.16 : 0.09));
     source.connect(filter).connect(gain).connect(master);
     source.start(now, Math.random() * 0.8, 0.2);
 
@@ -100,7 +101,16 @@ export function createAudio() {
     master.gain.setTargetAtTime(value ? 0.8 : 0, context.currentTime, 0.2);
   };
 
-  return { step, chirp, setTraffic, setEnabled, get enabled() { return enabled; }, dispose: () => void context.close() };
+  return {
+    step,
+    chirp,
+    setTraffic,
+    setEnabled,
+    get enabled() {
+      return enabled;
+    },
+    dispose: () => void context.close(),
+  };
 }
 
 export type CityAudio = ReturnType<typeof createAudio>;

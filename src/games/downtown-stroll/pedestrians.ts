@@ -1,14 +1,18 @@
-import * as THREE from 'three';
-import { BLOCK, CURB_HEIGHT, blockCenter, isPark, pick, range, rng } from './layout';
+import * as THREE from "three";
+import { BLOCK, CURB_HEIGHT, blockCenter, isPark, pick, range, rng } from "./layout";
 
-const CLOTHES = [0x1d2433, 0x151515, 0x3b3f45, 0x6f6a60, 0xbdb5a4, 0xe6e3dc, 0x4a5236, 0x2f4a6b, 0x5a3d2b, 0x6b2830, 0x8a8f96, 0x2b2e3a, 0x7d6a55, 0x324d49];
+const CLOTHES = [
+  0x1d2433, 0x151515, 0x3b3f45, 0x6f6a60, 0xbdb5a4, 0xe6e3dc, 0x4a5236, 0x2f4a6b, 0x5a3d2b, 0x6b2830, 0x8a8f96,
+  0x2b2e3a, 0x7d6a55, 0x324d49,
+];
 const PANTS = [0x1c2230, 0x121212, 0x2e3a52, 0x44474c, 0x6b6150, 0x3a3f2e, 0x252a36, 0x8e8677];
 const SKIN = [0xf1c8a8, 0xe0ac86, 0xc68b62, 0x9c6843, 0x6e4a31, 0xf5d3bb, 0xd49b72];
 const HAIR = [0x16110d, 0x2b1d13, 0x4a3322, 0x6d5134, 0xa98a5e, 0x8c8c88, 0x1f1a17];
 const SHOES = [0x151515, 0x2a211a, 0xdedcd6, 0x3a3a3a, 0x4d3625];
 
 /** Capsule hanging down from its top joint. */
-const limb = (radius: number, length: number, sx = 1, sz = 1) => new THREE.CapsuleGeometry(radius, length, 3, 8).translate(0, -length / 2, 0).scale(sx, 1, sz);
+const limb = (radius: number, length: number, sx = 1, sz = 1) =>
+  new THREE.CapsuleGeometry(radius, length, 3, 8).translate(0, -length / 2, 0).scale(sx, 1, sz);
 
 interface Walker {
   cx: number;
@@ -40,18 +44,25 @@ export function createPedestrians(count = 190, seed = 17) {
     upperArm: { geometry: limb(0.05, 0.22), per: 2 },
     forearm: { geometry: limb(0.042, 0.22), per: 2 },
     head: { geometry: new THREE.SphereGeometry(0.1, 14, 10).scale(1.02, 1.18, 0.92), per: 1 },
-    hair: { geometry: new THREE.SphereGeometry(0.108, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.55).scale(1.04, 1.12, 0.98).translate(-0.01, 0.02, 0), per: 1 },
+    hair: {
+      geometry: new THREE.SphereGeometry(0.108, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.55)
+        .scale(1.04, 1.12, 0.98)
+        .translate(-0.01, 0.02, 0),
+      per: 1,
+    },
   };
   type PartName = keyof typeof parts;
-  const meshes = Object.fromEntries(Object.entries(parts).map(([name, part]) => {
-    const mesh: THREE.InstancedMesh = new THREE.InstancedMesh(part.geometry, material, count * part.per);
-    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    mesh.frustumCulled = false;
-    group.add(mesh);
-    return [name, mesh];
-  })) as Record<PartName, THREE.InstancedMesh>;
+  const meshes = Object.fromEntries(
+    Object.entries(parts).map(([name, part]) => {
+      const mesh: THREE.InstancedMesh = new THREE.InstancedMesh(part.geometry, material, count * part.per);
+      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.frustumCulled = false;
+      group.add(mesh);
+      return [name, mesh];
+    }),
+  ) as Record<PartName, THREE.InstancedMesh>;
 
   const walkers: Walker[] = [];
   const blocks: [number, number][] = [];
@@ -79,8 +90,15 @@ export function createPedestrians(count = 190, seed = 17) {
     const skin = new THREE.Color(pick(random, SKIN));
     const longSleeves = random() < 0.6;
     const colors: Record<PartName, THREE.Color> = {
-      torso: shirt, pelvis: pants, thigh: pants, shin: pants, foot: new THREE.Color(pick(random, SHOES)),
-      upperArm: shirt, forearm: longSleeves ? shirt : skin, head: skin, hair: new THREE.Color(pick(random, HAIR)),
+      torso: shirt,
+      pelvis: pants,
+      thigh: pants,
+      shin: pants,
+      foot: new THREE.Color(pick(random, SHOES)),
+      upperArm: shirt,
+      forearm: longSleeves ? shirt : skin,
+      head: skin,
+      hair: new THREE.Color(pick(random, HAIR)),
     };
     for (const name of Object.keys(parts) as PartName[]) {
       for (let k = 0; k < parts[name].per; k++) meshes[name].setColorAt(i * parts[name].per + k, colors[name]);
@@ -95,7 +113,12 @@ export function createPedestrians(count = 190, seed = 17) {
     const s = ((w.s % perimeter) + perimeter) % perimeter;
     const edge = Math.floor(s / side);
     const t = s - edge * side - half;
-    const corners: [number, number, number, number][] = [[t, -half, 1, 0], [half, t, 0, 1], [-t, half, -1, 0], [-half, -t, 0, -1]];
+    const corners: [number, number, number, number][] = [
+      [t, -half, 1, 0],
+      [half, t, 0, 1],
+      [-t, half, -1, 0],
+      [-half, -t, 0, -1],
+    ];
     const [x, z, dx, dz] = corners[edge]!;
     w.pos.set(w.cx + x, w.cz + z);
     w.heading.set(dx * w.dir, dz * w.dir);
@@ -140,8 +163,9 @@ export function createPedestrians(count = 190, seed = 17) {
         if (a <= 0 || a > 3) continue;
         const l = -rel.x * w.heading.y + rel.y * w.heading.x;
         if (Math.abs(l) < 0.55) {
-          if (o.heading.dot(w.heading) > 0.5) { if (a < 1.2) blocked = true; }
-          else if (dodgeTarget === 0) dodgeTarget = 0.45;
+          if (o.heading.dot(w.heading) > 0.5) {
+            if (a < 1.2) blocked = true;
+          } else if (dodgeTarget === 0) dodgeTarget = 0.45;
         }
       }
       w.dodge += (dodgeTarget - w.dodge) * (1 - Math.exp(-dt * 3));
@@ -161,21 +185,49 @@ export function createPedestrians(count = 190, seed = 17) {
       root.compose(v.set(w.pos.x, CURB_HEIGHT, w.pos.y), q, one.set(w.scale, w.scale, w.scale));
 
       meshes.pelvis.setMatrixAt(i, m.copy(root).multiply(at(0, hip, 0)));
-      meshes.torso.setMatrixAt(i, m.copy(root).multiply(at(0, hip + 0.36, 0)).multiply(rotZ(-0.05 * moving)));
+      meshes.torso.setMatrixAt(
+        i,
+        m
+          .copy(root)
+          .multiply(at(0, hip + 0.36, 0))
+          .multiply(rotZ(-0.05 * moving)),
+      );
       meshes.head.setMatrixAt(i, m.copy(root).multiply(at(0.01, hip + 0.72, 0)));
       meshes.hair.setMatrixAt(i, m.copy(root).multiply(at(0.01, hip + 0.72, 0)));
       for (let k = 0; k < 2; k++) {
         const side = k === 0 ? -1 : 1;
         const legSwing = swing * side;
         const knee = 0.06 + 0.75 * Math.max(0, Math.cos(w.phase + (side < 0 ? 0 : Math.PI))) * moving;
-        thigh.copy(root).multiply(at(0, hip - 0.04, side * 0.085)).multiply(rotZ(legSwing));
+        thigh
+          .copy(root)
+          .multiply(at(0, hip - 0.04, side * 0.085))
+          .multiply(rotZ(legSwing));
         meshes.thigh.setMatrixAt(i * 2 + k, thigh);
-        shin.copy(thigh).multiply(at(0, -0.42, 0)).multiply(rotZ(-knee));
+        shin
+          .copy(thigh)
+          .multiply(at(0, -0.42, 0))
+          .multiply(rotZ(-knee));
         meshes.shin.setMatrixAt(i * 2 + k, shin);
-        meshes.foot.setMatrixAt(i * 2 + k, m.copy(shin).multiply(at(0, -0.44, 0)).multiply(rotZ(knee - legSwing)));
-        arm.copy(root).multiply(at(0, hip + 0.47, side * 0.215)).multiply(rotZ(-legSwing * 0.8)).multiply(tilt.makeRotationX(side * 0.08));
+        meshes.foot.setMatrixAt(
+          i * 2 + k,
+          m
+            .copy(shin)
+            .multiply(at(0, -0.44, 0))
+            .multiply(rotZ(knee - legSwing)),
+        );
+        arm
+          .copy(root)
+          .multiply(at(0, hip + 0.47, side * 0.215))
+          .multiply(rotZ(-legSwing * 0.8))
+          .multiply(tilt.makeRotationX(side * 0.08));
         meshes.upperArm.setMatrixAt(i * 2 + k, arm);
-        meshes.forearm.setMatrixAt(i * 2 + k, m.copy(arm).multiply(at(0, -0.3, 0)).multiply(rotZ(0.25 + Math.max(0, -legSwing) * 0.5)));
+        meshes.forearm.setMatrixAt(
+          i * 2 + k,
+          m
+            .copy(arm)
+            .multiply(at(0, -0.3, 0))
+            .multiply(rotZ(0.25 + Math.max(0, -legSwing) * 0.5)),
+        );
       }
     }
     for (const mesh of Object.values(meshes)) mesh.instanceMatrix.needsUpdate = true;
@@ -184,7 +236,8 @@ export function createPedestrians(count = 190, seed = 17) {
   /** Pushes the player out of pedestrians. */
   const collide = (point: THREE.Vector2, radius: number) => {
     for (const w of walkers) {
-      const dx = point.x - w.pos.x, dz = point.y - w.pos.y;
+      const dx = point.x - w.pos.x,
+        dz = point.y - w.pos.y;
       const reach = radius + 0.25;
       const d = Math.hypot(dx, dz);
       if (d < reach && d > 1e-5) point.set(w.pos.x + (dx / d) * reach, w.pos.y + (dz / d) * reach);

@@ -1,47 +1,131 @@
 ---
-import GameHeader from '../../components/GameHeader.astro';
+import GameHeader from "../../components/GameHeader.astro";
 ---
+
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width" />
-  <meta name="description" content="Catch falling stars in a 30-second arcade game." />
-  <title>Star Catcher</title>
-</head>
-<body>
-<GameHeader />
-<main>
-  <h1>Star Catcher</h1>
-  <p>Catch a little piece of the night sky.</p>
-  <p class="instructions">Move with ← → or A / D. On touchscreens, tap or drag across the playfield.</p>
-<star-catcher>
-  <div class="scoreboard"><span>Stars <strong data-score>0</strong></span><span>Time <strong data-time>30</strong> s</span></div>
-  <canvas width="720" height="400" tabindex="0" aria-label="Star Catcher playfield. Use the left and right arrow keys to move." aria-describedby="game-status">This game requires a browser with Canvas support.</canvas>
-  <div class="actions"><button type="button" data-start>Start</button><p id="game-status" role="status">Press Start to collect the stars.</p></div>
-</star-catcher>
-</main>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="description" content="Catch falling stars in a 30-second arcade game." />
+    <title>Star Catcher</title>
+  </head>
+  <body>
+    <GameHeader />
+    <main>
+      <h1>Star Catcher</h1>
+      <p>Catch a little piece of the night sky.</p>
+      <p class="instructions">Move with ← → or A / D. On touchscreens, tap or drag across the playfield.</p>
+      <star-catcher>
+        <div class="scoreboard">
+          <span>
+            Stars <strong data-score>0</strong>
+          </span>
+          <span>
+            Time <strong data-time>30</strong> s
+          </span>
+        </div>
+        <canvas
+          width="720"
+          height="400"
+          tabindex="0"
+          aria-label="Star Catcher playfield. Use the left and right arrow keys to move."
+          aria-describedby="game-status"
+        >
+          This game requires a browser with Canvas support.
+        </canvas>
+        <div class="actions">
+          <button type="button" data-start>
+            Start
+          </button>
+          <p id="game-status" role="status">
+            Press Start to collect the stars.
+          </p>
+        </div>
+      </star-catcher>
+    </main>
+  </body>
 </html>
 <script>
-  import './game';
+  import "./game";
 </script>
 <style>
-  star-catcher { display: block; max-width: 800px; }
-  .scoreboard { display: flex; justify-content: space-between; padding: 16px 20px; background: #202c40; border-radius: 14px 14px 0 0; }
-  strong { color: #ffcf75; font-size: 1.4rem; margin-left: 8px; }
-  canvas { display: block; width: 100%; height: auto; background: #111b30; touch-action: none; border-radius: 0 0 14px 14px; }
-  .actions { display: flex; align-items: center; gap: 20px; margin-top: 20px; flex-wrap: wrap; }
-  .actions p { margin: 0; font-size: .9rem; }
+  star-catcher {
+    display: block;
+    max-width: 800px;
+  }
+  .scoreboard {
+    display: flex;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: #202c40;
+    border-radius: 14px 14px 0 0;
+  }
+  strong {
+    color: #ffcf75;
+    font-size: 1.4rem;
+    margin-left: 8px;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    background: #111b30;
+    touch-action: none;
+    border-radius: 0 0 14px 14px;
+  }
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+  .actions p {
+    margin: 0;
+    font-size: 0.9rem;
+  }
 </style>
 
 <style>
-  html { background: #111b30; color: #eaf0ff; color-scheme: dark; font-family: system-ui, sans-serif; }
-  body { margin: 0; }
-  main { max-width: 800px; margin: auto; padding: 24px 20px 48px; }
-  h1 { margin: 8px 0; font-size: clamp(2rem, 6vw, 3rem); }
-  p { color: #b8c3d6; line-height: 1.7; }
-  .instructions { font-size: .9rem; margin-bottom: 24px; }
-  button { font: inherit; cursor: pointer; border: 0; border-radius: 10px; padding: 12px 22px; background: #c3edb0; color: #17221a; font-weight: 700; }
-  :focus-visible { outline: 3px solid #ffcf75; outline-offset: 5px; }
+  html {
+    background: #111b30;
+    color: #eaf0ff;
+    color-scheme: dark;
+    font-family: system-ui, sans-serif;
+  }
+  body {
+    margin: 0;
+  }
+  main {
+    max-width: 800px;
+    margin: auto;
+    padding: 24px 20px 48px;
+  }
+  h1 {
+    margin: 8px 0;
+    font-size: clamp(2rem, 6vw, 3rem);
+  }
+  p {
+    color: #b8c3d6;
+    line-height: 1.7;
+  }
+  .instructions {
+    font-size: 0.9rem;
+    margin-bottom: 24px;
+  }
+  button {
+    font: inherit;
+    cursor: pointer;
+    border: 0;
+    border-radius: 10px;
+    padding: 12px 22px;
+    background: #c3edb0;
+    color: #17221a;
+    font-weight: 700;
+  }
+  :focus-visible {
+    outline: 3px solid #ffcf75;
+    outline-offset: 5px;
+  }
 </style>

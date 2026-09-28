@@ -1,8 +1,8 @@
-import * as THREE from 'three';
-import { Sky } from 'three/addons/objects/Sky.js';
-import { Water } from 'three/addons/objects/Water2.js';
-import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
-import { rockShader, barkShader, groundShader, grassWindShader, type ShaderPatch } from './shaders';
+import * as THREE from "three";
+import { Sky } from "three/addons/objects/Sky.js";
+import { Water } from "three/addons/objects/Water2.js";
+import { mergeGeometries, mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
+import { rockShader, barkShader, groundShader, grassWindShader, type ShaderPatch } from "./shaders";
 
 export const HALF_WIDTH = 7;
 export const GOAL = 200;
@@ -39,7 +39,8 @@ function noise(x: number, y: number) {
   return THREE.MathUtils.lerp(top, bottom, sy) * 2 - 1;
 }
 
-const fbm = (x: number, y: number) => noise(x, y) * 0.55 + noise(x * 2.1, y * 2.1) * 0.3 + noise(x * 4.3, y * 4.3) * 0.15;
+const fbm = (x: number, y: number) =>
+  noise(x, y) * 0.55 + noise(x * 2.1, y * 2.1) * 0.3 + noise(x * 4.3, y * 4.3) * 0.15;
 
 function ridged(x: number, y: number) {
   let value = 0;
@@ -67,23 +68,27 @@ function mountainHeight(x: number, z: number) {
 
 export function terrainHeight(x: number, z: number) {
   const ax = Math.abs(x);
-  const ends = smoothstep(START_Z - 25, START_Z, z) * 14
-    + smoothstep(-590, -760, z) * (40 + fbm(x * 0.02, z * 0.02) * 12) * (1 - smoothstep(250, 600, ax));
+  const ends =
+    smoothstep(START_Z - 25, START_Z, z) * 14 +
+    smoothstep(-590, -760, z) * (40 + fbm(x * 0.02, z * 0.02) * 12) * (1 - smoothstep(250, 600, ax));
   if (ax < HALF_WIDTH) {
     const t = ax / HALF_WIDTH;
     return -0.25 - 2 * (1 - t * t) + fbm(x * 0.4, z * 0.4) * 0.2 * (1 - t * t) + mountainHeight(x, z) + ends;
   }
   const bank = ax - HALF_WIDTH;
-  return -0.25
-    + smoothstep(0, 3.5, bank) * 1.3
-    + fbm(x * 0.5, z * 0.5) * 0.18 * smoothstep(0, 2, bank)
-    + fbm(x * 0.04, z * 0.04) * 2.5 * smoothstep(4, 20, bank)
-    + smoothstep(22, 75, bank) * (9 + fbm(x * 0.015, z * 0.015) * 10)
-    + mountainHeight(x, z)
-    + ends;
+  return (
+    -0.25 +
+    smoothstep(0, 3.5, bank) * 1.3 +
+    fbm(x * 0.5, z * 0.5) * 0.18 * smoothstep(0, 2, bank) +
+    fbm(x * 0.04, z * 0.04) * 2.5 * smoothstep(4, 20, bank) +
+    smoothstep(22, 75, bank) * (9 + fbm(x * 0.015, z * 0.015) * 10) +
+    mountainHeight(x, z) +
+    ends
+  );
 }
 
-const shoreWeight = (x: number, z: number) => 1 - smoothstep(2.2, 4.5, Math.abs(x) - HALF_WIDTH + fbm(x * 0.15, z * 0.15) * 1.8);
+const shoreWeight = (x: number, z: number) =>
+  1 - smoothstep(2.2, 4.5, Math.abs(x) - HALF_WIDTH + fbm(x * 0.15, z * 0.15) * 1.8);
 
 function range(from: number, to: number, step: number) {
   const values: number[] = [];
@@ -92,7 +97,11 @@ function range(from: number, to: number, step: number) {
   return values;
 }
 
-function gridGeometry(xs: number[], zs: number[], vertex: (x: number, z: number) => { y: number; color?: THREE.Color; shore?: number }) {
+function gridGeometry(
+  xs: number[],
+  zs: number[],
+  vertex: (x: number, z: number) => { y: number; color?: THREE.Color; shore?: number },
+) {
   const positions: number[] = [];
   const colors: number[] = [];
   const shore: number[] = [];
@@ -113,27 +122,32 @@ function gridGeometry(xs: number[], zs: number[], vertex: (x: number, z: number)
     }
   }
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  if (colors.length) geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-  if (shore.length) geometry.setAttribute('shore', new THREE.Float32BufferAttribute(shore, 1));
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  if (colors.length) geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  if (shore.length) geometry.setAttribute("shore", new THREE.Float32BufferAttribute(shore, 1));
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
   return geometry;
 }
 
-function patch(material: THREE.MeshStandardMaterial, key: string, shader: ShaderPatch, uniforms: Record<string, THREE.IUniform> = {}) {
+function patch(
+  material: THREE.MeshStandardMaterial,
+  key: string,
+  shader: ShaderPatch,
+  uniforms: Record<string, THREE.IUniform> = {},
+) {
   material.customProgramCacheKey = () => key;
   material.onBeforeCompile = (program) => {
     Object.assign(program.uniforms, uniforms);
     program.vertexShader = program.vertexShader
-      .replace('#include <common>', `#include <common>\n${shader.vertexHead ?? ''}`)
-      .replace('#include <begin_vertex>', `#include <begin_vertex>\n${shader.afterBegin ?? ''}`)
-      .replace('#include <project_vertex>', `#include <project_vertex>\n${shader.afterProject ?? ''}`);
+      .replace("#include <common>", `#include <common>\n${shader.vertexHead ?? ""}`)
+      .replace("#include <begin_vertex>", `#include <begin_vertex>\n${shader.afterBegin ?? ""}`)
+      .replace("#include <project_vertex>", `#include <project_vertex>\n${shader.afterProject ?? ""}`);
     program.fragmentShader = program.fragmentShader
-      .replace('#include <common>', `#include <common>\n${shader.fragmentHead ?? ''}`)
-      .replace('#include <map_fragment>', `#include <map_fragment>\n${shader.afterMap ?? ''}`)
-      .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>\n${shader.afterRoughness ?? ''}`)
-      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>\n${shader.afterNormal ?? ''}`);
+      .replace("#include <common>", `#include <common>\n${shader.fragmentHead ?? ""}`)
+      .replace("#include <map_fragment>", `#include <map_fragment>\n${shader.afterMap ?? ""}`)
+      .replace("#include <roughnessmap_fragment>", `#include <roughnessmap_fragment>\n${shader.afterRoughness ?? ""}`)
+      .replace("#include <normal_fragment_maps>", `#include <normal_fragment_maps>\n${shader.afterNormal ?? ""}`);
   };
   return material;
 }
@@ -158,7 +172,7 @@ function waterNormalMap(seed: number) {
       let dx = 0;
       let dy = 0;
       for (const wave of waves) {
-        const angle = (wave.kx * x + wave.ky * y) / size * Math.PI * 2 + wave.phase;
+        const angle = ((wave.kx * x + wave.ky * y) / size) * Math.PI * 2 + wave.phase;
         const slope = Math.cos(angle) * wave.amplitude * Math.PI * 2;
         dx += slope * wave.kx;
         dy += slope * wave.ky;
@@ -182,13 +196,17 @@ function waterNormalMap(seed: number) {
 
 function rockGeometry(seed: number) {
   const base = new THREE.IcosahedronGeometry(1, 4);
-  base.deleteAttribute('normal');
-  base.deleteAttribute('uv');
+  base.deleteAttribute("normal");
+  base.deleteAttribute("uv");
   const geometry = mergeVertices(base);
   base.dispose();
-  const position = geometry.getAttribute('position');
+  const position = geometry.getAttribute("position");
   const point = new THREE.Vector3();
-  const stretch = new THREE.Vector3(1 + lattice(seed, 1) * 0.6, 0.55 + lattice(seed, 2) * 0.3, 0.8 + lattice(seed, 3) * 0.5);
+  const stretch = new THREE.Vector3(
+    1 + lattice(seed, 1) * 0.6,
+    0.55 + lattice(seed, 2) * 0.3,
+    0.8 + lattice(seed, 3) * 0.5,
+  );
   for (let i = 0; i < position.count; i++) {
     point.fromBufferAttribute(position, i);
     const nx = point.x * 1.6 + seed * 7.3;
@@ -209,7 +227,7 @@ function rockGeometry(seed: number) {
 function logGeometry() {
   const trunk = new THREE.CylinderGeometry(0.34, 0.4, 4, 18, 30, false);
   trunk.rotateZ(Math.PI / 2);
-  const position = trunk.getAttribute('position');
+  const position = trunk.getAttribute("position");
   for (let i = 0; i < position.count; i++) {
     const x = position.getX(i);
     const y = position.getY(i);
@@ -219,7 +237,13 @@ function logGeometry() {
     const bumps = 1 + noise(x * 1.2, angle * 1.5) * 0.12 + noise(x * 6, angle * 4) * 0.03;
     position.setXYZ(i, x, y * bumps + Math.sin(x * 0.6) * 0.08, z * bumps);
   }
-  const branch = (length: number, radius: number, rotateZ: number, rotateX: number, offset: [number, number, number]) => {
+  const branch = (
+    length: number,
+    radius: number,
+    rotateZ: number,
+    rotateX: number,
+    offset: [number, number, number],
+  ) => {
     const stub = new THREE.CylinderGeometry(radius * 0.4, radius, length, 8, 1);
     stub.translate(0, length / 2, 0);
     stub.rotateZ(rotateZ);
@@ -227,9 +251,13 @@ function logGeometry() {
     stub.translate(...offset);
     return stub;
   };
-  const parts = [trunk, branch(0.7, 0.14, -0.7, 0.5, [0.8, 0.25, 0.05]), branch(0.5, 0.11, 0.9, -1.2, [-1.1, 0.1, -0.2])];
+  const parts = [
+    trunk,
+    branch(0.7, 0.14, -0.7, 0.5, [0.8, 0.25, 0.05]),
+    branch(0.5, 0.11, 0.9, -1.2, [-1.1, 0.1, -0.2]),
+  ];
   const geometry = mergeGeometries(parts.map((part) => part.toNonIndexed()))!;
-  geometry.deleteAttribute('uv');
+  geometry.deleteAttribute("uv");
   geometry.computeVertexNormals();
   for (const part of parts) part.dispose();
   return geometry;
@@ -238,14 +266,14 @@ function logGeometry() {
 function coloured(geometry: THREE.BufferGeometry, color: (x: number, y: number, z: number) => THREE.Color) {
   geometry.computeVertexNormals();
   const flat = geometry.index ? geometry.toNonIndexed() : geometry;
-  const position = flat.getAttribute('position');
+  const position = flat.getAttribute("position");
   const colors: number[] = [];
   for (let i = 0; i < position.count; i++) {
     const c = color(position.getX(i), position.getY(i), position.getZ(i));
     colors.push(c.r, c.g, c.b);
   }
-  flat.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-  flat.deleteAttribute('uv');
+  flat.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  flat.deleteAttribute("uv");
   return flat;
 }
 
@@ -260,12 +288,13 @@ function coniferGeometry(seed: number, tiers: number, radialSegments: number, he
     const radius = THREE.MathUtils.lerp(1.1, 0.18, t ** 0.9) * (0.85 + lattice(seed, tier) * 0.3);
     const height = THREE.MathUtils.lerp(1.1, 0.6, t);
     const cone = new THREE.ConeGeometry(radius, height, radialSegments, heightSegments, true);
-    const position = cone.getAttribute('position');
+    const position = cone.getAttribute("position");
     for (let i = 0; i < position.count; i++) {
       const y = position.getY(i);
       const rim = 0.5 - y / height;
       const angle = Math.atan2(position.getZ(i), position.getX(i));
-      const jitter = 1 + (noise(angle * 2.5 + seed * 3, tier * 1.7) * 0.35 + (lattice(i + seed, tier) - 0.5) * 0.3) * rim;
+      const jitter =
+        1 + (noise(angle * 2.5 + seed * 3, tier * 1.7) * 0.35 + (lattice(i + seed, tier) - 0.5) * 0.3) * rim;
       const droop = -rim * rim * (0.2 + lattice(i * 7 + tier, seed) * 0.25);
       position.setXYZ(i, position.getX(i) * jitter, y + droop, position.getZ(i) * jitter);
     }
@@ -276,8 +305,8 @@ function coniferGeometry(seed: number, tiers: number, radialSegments: number, he
       const outer = Math.min(1, Math.hypot(x, z) / 1.1);
       return srgb(0.09 * shade, (0.16 + outer * 0.06 + y * 0.004) * shade, 0.09 * shade);
     });
-    const vertices = foliage.getAttribute('position');
-    const normals = foliage.getAttribute('normal');
+    const vertices = foliage.getAttribute("position");
+    const normals = foliage.getAttribute("normal");
     const direction = new THREE.Vector3();
     for (let i = 0; i < vertices.count; i++) {
       direction.set(vertices.getX(i), 0.45 + (vertices.getY(i) - 2.5) * 0.08, vertices.getZ(i)).normalize();
@@ -310,12 +339,23 @@ function grassTuftGeometry() {
     const point = (t: number, side: number) => {
       const w = width * (1 - t) * side;
       const bend = lean * t * t;
-      return [baseX + Math.cos(facing) * w + Math.cos(a) * bend, height * t, baseZ + Math.sin(facing) * w + Math.sin(a) * bend];
+      return [
+        baseX + Math.cos(facing) * w + Math.cos(a) * bend,
+        height * t,
+        baseZ + Math.sin(facing) * w + Math.sin(a) * bend,
+      ];
     };
     for (let s = 0; s < segments; s++) {
       const t0 = s / segments;
       const t1 = (s + 1) / segments;
-      const corners: [number, number][] = [[t0, -1], [t0, 1], [t1, 1], [t0, -1], [t1, 1], [t1, -1]];
+      const corners: [number, number][] = [
+        [t0, -1],
+        [t0, 1],
+        [t1, 1],
+        [t0, -1],
+        [t1, 1],
+        [t1, -1],
+      ];
       for (const [t, side] of corners) {
         positions.push(...point(t, side));
         const c = root.clone().lerp(tip, t);
@@ -325,9 +365,9 @@ function grassTuftGeometry() {
     }
   }
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
+  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
   return geometry;
 }
 
@@ -335,9 +375,14 @@ function mountainColor(x: number, z: number, y: number, slope: number) {
   const treeline = 950 + fbm(x * 0.004, z * 0.004) * 180;
   const snowline = 1450 + fbm(x * 0.003 + 9, z * 0.003) * 200;
   const variation = 0.85 + fbm(x * 0.02, z * 0.02) * 0.25;
-  const color = srgb(0.36, 0.42, 0.2)
-    .lerp(srgb(0.1, 0.16, 0.09), smoothstep(25, 60, y) * smoothstep(-0.2, 0.3, fbm(x * 0.01, z * 0.01) + 0.25));
-  color.lerp(srgb(0.42, 0.4, 0.37), Math.max(smoothstep(treeline - 120, treeline + 120, y), smoothstep(0.75, 0.95, slope)));
+  const color = srgb(0.36, 0.42, 0.2).lerp(
+    srgb(0.1, 0.16, 0.09),
+    smoothstep(25, 60, y) * smoothstep(-0.2, 0.3, fbm(x * 0.01, z * 0.01) + 0.25),
+  );
+  color.lerp(
+    srgb(0.42, 0.4, 0.37),
+    Math.max(smoothstep(treeline - 120, treeline + 120, y), smoothstep(0.75, 0.95, slope)),
+  );
   color.multiplyScalar(variation);
   color.lerp(srgb(0.92, 0.94, 0.97), smoothstep(snowline - 60, snowline + 60, y) * (1 - smoothstep(0.62, 0.8, slope)));
   return color;
@@ -380,9 +425,9 @@ export async function createWorld(renderer: THREE.WebGLRenderer, onProgress: (ra
   scene.backgroundIntensity = 0.45;
   scene.environment = sky.environment.texture;
   scene.environmentIntensity = 0.22;
-  scene.fog = new THREE.Fog('#b9c7d2', 80, 9500);
+  scene.fog = new THREE.Fog("#b9c7d2", 80, 9500);
 
-  const sun = new THREE.DirectionalLight('#fff0d8', 2.8);
+  const sun = new THREE.DirectionalLight("#fff0d8", 2.8);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
   Object.assign(sun.shadow.camera, { left: -35, right: 35, top: 35, bottom: -35, near: 1, far: 220 });
@@ -391,9 +436,18 @@ export async function createWorld(renderer: THREE.WebGLRenderer, onProgress: (ra
   scene.add(sun, sun.target);
   await step(0.2);
 
-  const groundMaterial = patch(new THREE.MeshPhysicalMaterial({ roughness: 1, specularIntensity: 0.3 }), 'river-ground', groundShader);
+  const groundMaterial = patch(
+    new THREE.MeshPhysicalMaterial({ roughness: 1, specularIntensity: 0.3 }),
+    "river-ground",
+    groundShader,
+  );
   const zs = range(END_Z, START_Z, 1.5).reverse();
-  const outer = [...range(HALF_WIDTH + 0.5, 14, 0.5), ...range(15, 30, 1.5), ...range(34, 110, 6), ...range(116, NEAR_EDGE, 12)];
+  const outer = [
+    ...range(HALF_WIDTH + 0.5, 14, 0.5),
+    ...range(15, 30, 1.5),
+    ...range(34, 110, 6),
+    ...range(116, NEAR_EDGE, 12),
+  ];
   const ground = (x: number, z: number) => ({ y: terrainHeight(x, z), shore: shoreWeight(x, z) });
   for (const xs of [range(-HALF_WIDTH - 0.5, HALF_WIDTH + 0.5, 0.5), outer, outer.map((x) => -x).reverse()]) {
     const mesh = new THREE.Mesh(gridGeometry(xs, zs, ground), groundMaterial);
@@ -420,11 +474,12 @@ export async function createWorld(renderer: THREE.WebGLRenderer, onProgress: (ra
   const waterLength = START_Z - END_Z;
   const waterWidth = HALF_WIDTH * 2 + 6;
   const waterGeometry = new THREE.PlaneGeometry(waterWidth, waterLength, 1, 1);
-  const waterUv = waterGeometry.getAttribute('uv');
-  for (let i = 0; i < waterUv.count; i++) waterUv.setXY(i, waterUv.getX(i) * waterWidth / 3, waterUv.getY(i) * waterLength / 3);
+  const waterUv = waterGeometry.getAttribute("uv");
+  for (let i = 0; i < waterUv.count; i++)
+    waterUv.setXY(i, (waterUv.getX(i) * waterWidth) / 3, (waterUv.getY(i) * waterLength) / 3);
   const waterNormals = [waterNormalMap(1), waterNormalMap(2)] as const;
   const water = new Water(waterGeometry, {
-    color: '#8fb3a6',
+    color: "#8fb3a6",
     scale: 1,
     flowDirection: new THREE.Vector2(0, 1),
     flowSpeed: 0.07,
@@ -438,12 +493,30 @@ export async function createWorld(renderer: THREE.WebGLRenderer, onProgress: (ra
   water.position.set(0, 0, (START_Z + END_Z) / 2);
   scene.add(water);
 
-  const rockMaterial = patch(new THREE.MeshPhysicalMaterial({ roughness: 0.9, specularIntensity: 0.5 }), 'river-rock', rockShader);
+  const rockMaterial = patch(
+    new THREE.MeshPhysicalMaterial({ roughness: 0.9, specularIntensity: 0.5 }),
+    "river-rock",
+    rockShader,
+  );
   const rocks: Model[] = [1, 2, 3, 4, 5].map((seed) => ({ ...rockGeometry(seed), material: rockMaterial }));
-  const trunk: Model = { geometry: logGeometry(), material: patch(new THREE.MeshStandardMaterial({ roughness: 0.85 }), 'river-bark', barkShader), radius: 0.4 };
+  const trunk: Model = {
+    geometry: logGeometry(),
+    material: patch(new THREE.MeshStandardMaterial({ roughness: 0.85 }), "river-bark", barkShader),
+    radius: 0.4,
+  };
   const grass: Model = {
     geometry: grassTuftGeometry(),
-    material: patch(new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.9, specularIntensity: 0.25, side: THREE.DoubleSide }), 'river-grass', grassWindShader, { uTime: time }),
+    material: patch(
+      new THREE.MeshPhysicalMaterial({
+        vertexColors: true,
+        roughness: 0.9,
+        specularIntensity: 0.25,
+        side: THREE.DoubleSide,
+      }),
+      "river-grass",
+      grassWindShader,
+      { uTime: time },
+    ),
     radius: 0.2,
   };
   const treeMaterial = new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 1, specularIntensity: 0.2 });
@@ -454,7 +527,14 @@ export async function createWorld(renderer: THREE.WebGLRenderer, onProgress: (ra
   // Scatter grass and boulders along the banks in chunks; grass chunks are only drawn near the swimmer.
   const placement = new THREE.Object3D();
   const plantChunks: { z: number; mesh: THREE.InstancedMesh }[] = [];
-  const scatter = (model: Model, perChunk: number, minBank: number, maxBank: number, scale: [number, number], options: { shadows: boolean; nearOnly: boolean; sink: number; spread: number }) => {
+  const scatter = (
+    model: Model,
+    perChunk: number,
+    minBank: number,
+    maxBank: number,
+    scale: [number, number],
+    options: { shadows: boolean; nearOnly: boolean; sink: number; spread: number },
+  ) => {
     for (let chunkZ = START_Z; chunkZ > END_Z + 150; chunkZ -= CHUNK) {
       const instances = new THREE.InstancedMesh(model.geometry, model.material, perChunk);
       for (let i = 0; i < perChunk; i++) {
@@ -476,7 +556,8 @@ export async function createWorld(renderer: THREE.WebGLRenderer, onProgress: (ra
     }
   };
   scatter(grass, 2400, 3, 16, [0.8, 1.5], { shadows: false, nearOnly: true, sink: 0.02, spread: 1.2 });
-  for (const rock of rocks.slice(0, 3)) scatter(rock, 1, 1.5, 30, [0.8, 2.4], { shadows: true, nearOnly: false, sink: 0.25, spread: 1.8 });
+  for (const rock of rocks.slice(0, 3))
+    scatter(rock, 1, 1.5, 30, [0.8, 2.4], { shadows: true, nearOnly: false, sink: 0.25, spread: 1.8 });
 
   // Spruce forest on the hillsides, thicker in patches and on the ridge upstream; distant trees use a cheaper mesh.
   const treeMatrices: THREE.Matrix4[][] = [...nearTrees, ...farTrees].map(() => []);
@@ -485,7 +566,8 @@ export async function createWorld(renderer: THREE.WebGLRenderer, onProgress: (ra
     const x = (Math.random() < 0.5 ? -1 : 1) * (HALF_WIDTH + bank);
     const z = START_Z + 60 - Math.random() * 1000;
     const y = terrainHeight(x, z);
-    const density = smoothstep(-0.1, 0.35, fbm(x * 0.012, z * 0.012)) * smoothstep(9, 30, bank) + smoothstep(-600, -700, z) * 0.8;
+    const density =
+      smoothstep(-0.1, 0.35, fbm(x * 0.012, z * 0.012)) * smoothstep(9, 30, bank) + smoothstep(-600, -700, z) * 0.8;
     if (Math.random() > density || y > 700) continue;
     const size = 3 + Math.random() * 3.5;
     placement.position.set(x, y - 0.3, z);
@@ -552,8 +634,8 @@ function createFinish(scene: THREE.Scene) {
   group.position.z = -GOAL;
   const buoys: THREE.Mesh[] = [];
   const buoyGeometry = new THREE.SphereGeometry(0.2, 20, 14);
-  const red = new THREE.MeshStandardMaterial({ color: '#d8321f', roughness: 0.35 });
-  const white = new THREE.MeshStandardMaterial({ color: '#f2f2ee', roughness: 0.35 });
+  const red = new THREE.MeshStandardMaterial({ color: "#d8321f", roughness: 0.35 });
+  const white = new THREE.MeshStandardMaterial({ color: "#f2f2ee", roughness: 0.35 });
   for (let x = -HALF_WIDTH - 0.5, i = 0; x <= HALF_WIDTH + 0.5; x += 0.8, i++) {
     const buoy = new THREE.Mesh(buoyGeometry, i % 2 ? white : red);
     buoy.position.set(x, 0.02, 0);
@@ -561,7 +643,7 @@ function createFinish(scene: THREE.Scene) {
     group.add(buoy);
     buoys.push(buoy);
   }
-  const wood = patch(new THREE.MeshStandardMaterial({ roughness: 0.9 }), 'river-bark', barkShader);
+  const wood = patch(new THREE.MeshStandardMaterial({ roughness: 0.9 }), "river-bark", barkShader);
   const postHeight = 4.2;
   for (const side of [-1, 1]) {
     const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, postHeight, 12), wood);
@@ -570,30 +652,35 @@ function createFinish(scene: THREE.Scene) {
     post.castShadow = true;
     group.add(post);
   }
-  const canvas = document.createElement('canvas');
+  const canvas = document.createElement("canvas");
   canvas.width = 1024;
   canvas.height = 96;
-  const context = canvas.getContext('2d')!;
-  context.fillStyle = '#e8672c';
+  const context = canvas.getContext("2d")!;
+  context.fillStyle = "#e8672c";
   context.fillRect(0, 0, 1024, 96);
-  context.fillStyle = '#fff8ee';
-  context.font = '600 60px system-ui, sans-serif';
-  context.textAlign = 'center';
-  context.textBaseline = 'middle';
-  context.fillText('F I N I S H', 512, 52);
+  context.fillStyle = "#fff8ee";
+  context.font = "600 60px system-ui, sans-serif";
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText("F I N I S H", 512, 52);
   const bannerTexture = new THREE.CanvasTexture(canvas);
   bannerTexture.colorSpace = THREE.SRGBColorSpace;
   const bannerGeometry = new THREE.PlaneGeometry((HALF_WIDTH + 1.6) * 2, 1.1, 40, 4);
-  const banner = new THREE.Mesh(bannerGeometry, new THREE.MeshStandardMaterial({ map: bannerTexture, side: THREE.DoubleSide, roughness: 0.8 }));
+  const banner = new THREE.Mesh(
+    bannerGeometry,
+    new THREE.MeshStandardMaterial({ map: bannerTexture, side: THREE.DoubleSide, roughness: 0.8 }),
+  );
   banner.position.set(0, terrainHeight(HALF_WIDTH + 1.6, -GOAL) + postHeight - 0.9, 0);
   banner.castShadow = true;
   group.add(banner);
   scene.add(group);
-  const rest = Float32Array.from(bannerGeometry.getAttribute('position').array);
+  const rest = Float32Array.from(bannerGeometry.getAttribute("position").array);
   return {
     update(time: number) {
-      buoys.forEach((buoy, i) => { buoy.position.y = 0.03 + Math.sin(time * 1.8 + i * 0.7) * 0.03; });
-      const position = bannerGeometry.getAttribute('position');
+      buoys.forEach((buoy, i) => {
+        buoy.position.y = 0.03 + Math.sin(time * 1.8 + i * 0.7) * 0.03;
+      });
+      const position = bannerGeometry.getAttribute("position");
       for (let i = 0; i < position.count; i++) {
         const x = rest[i * 3]!;
         const sag = 1 - (x / (HALF_WIDTH + 1.6)) ** 2;

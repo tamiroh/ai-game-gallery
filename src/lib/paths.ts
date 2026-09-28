@@ -1,3 +1,3 @@
-export function sitePath(path = '') {
-  return `${import.meta.env.BASE_URL.replace(/\/$/, '')}/${path}`;
+export function sitePath(path = "") {
+  return `${import.meta.env.BASE_URL.replace(/\/$/, "")}/${path}`;
 }

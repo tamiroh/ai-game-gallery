@@ -114,18 +114,23 @@ vec3 rsBump(vec3 surfacePosition, vec3 surfaceNormal, float height, float faceDi
 }
 `;
 
-const surface = (fragment: Pick<ShaderPatch, 'afterMap' | 'afterRoughness'>, extraVertexHead = '', afterBegin = ''): ShaderPatch => ({
+const surface = (
+  fragment: Pick<ShaderPatch, "afterMap" | "afterRoughness">,
+  extraVertexHead = "",
+  afterBegin = "",
+): ShaderPatch => ({
   vertexHead: varyings + extraVertexHead,
   afterBegin,
   afterProject: passVaryings,
-  fragmentHead: varyings + noiseLibrary + extraVertexHead.replace(/attribute float \w+;\n?/g, ''),
+  fragmentHead: varyings + noiseLibrary + extraVertexHead.replace(/attribute float \w+;\n?/g, ""),
   ...fragment,
-  afterNormal: 'normal = rsBump(-vViewPosition, normal, rsHeight, faceDirection);',
+  afterNormal: "normal = rsBump(-vViewPosition, normal, rsHeight, faceDirection);",
 });
 
 // Gravel near the water fading into meadow, blended by the per-vertex shore weight.
-export const groundShader = surface({
-  afterMap: /* glsl */ `
+export const groundShader = surface(
+  {
+    afterMap: /* glsl */ `
     vec2 rsWp = vRsWorld.xz;
     float rsPixel = max(length(fwidth(rsWp)), 1e-4);
     float rsShore = clamp(vShore, 0.0, 1.0);
@@ -155,8 +160,11 @@ export const groundShader = surface({
     diffuseColor.rgb = pow(rsAlbedo, vec3(2.2));
     float rsHeight = rsShore * (rsStone * (0.006 + sqrt(rsDome) * 0.02) + rsSmall * 0.004 * (1.0 - rsStone)) * (1.0 - rsFar) + (1.0 - rsShore) * rsGf * 0.012;
   `,
-  afterRoughness: 'roughnessFactor = mix(roughnessFactor, 0.35, rsWet * rsShore);',
-}, 'attribute float shore;\nvarying float vShore;\n', 'vShore = shore;');
+    afterRoughness: "roughnessFactor = mix(roughnessFactor, 0.35, rsWet * rsShore);",
+  },
+  "attribute float shore;\nvarying float vShore;\n",
+  "vShore = shore;",
+);
 
 // Weathered granite with lichen, moss on the upward faces and a dark wet band at the waterline.
 export const rockShader = surface({
@@ -175,7 +183,7 @@ export const rockShader = surface({
     diffuseColor.rgb = pow(rsRock, vec3(2.2));
     float rsHeight = rsN * 0.06 + rsF * 0.008;
   `,
-  afterRoughness: 'roughnessFactor = mix(roughnessFactor, 0.3, rsWet);',
+  afterRoughness: "roughnessFactor = mix(roughnessFactor, 0.3, rsWet);",
 });
 
 // Sun-bleached driftwood running along the local x axis, with growth rings on the cut ends.
@@ -194,12 +202,12 @@ export const barkShader = surface({
     diffuseColor.rgb = pow(rsWood, vec3(2.2));
     float rsHeight = (rsRidge * 0.025 + rsGrain * 0.004) * (1.0 - rsCap);
   `,
-  afterRoughness: 'roughnessFactor = mix(roughnessFactor, 0.4, rsWet);',
+  afterRoughness: "roughnessFactor = mix(roughnessFactor, 0.4, rsWet);",
 });
 
 // Sways grass blades in a gusty breeze; blade tips move the most.
 export const grassWindShader: ShaderPatch = {
-  vertexHead: 'uniform float uTime;',
+  vertexHead: "uniform float uTime;",
   afterBegin: /* glsl */ `
     #ifdef USE_INSTANCING
       vec3 rsBase = instanceMatrix[3].xyz;

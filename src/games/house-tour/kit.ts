@@ -1,11 +1,18 @@
-import * as THREE from 'three';
-import type { MaterialName } from './materials';
+import * as THREE from "three";
+import type { MaterialName } from "./materials";
 
 export type Vec3 = [number, number, number];
 export type ColorLike = number | THREE.Color;
 
 /** Axis-aligned collision volume in world space. */
-export interface Solid { x0: number; z0: number; x1: number; z1: number; y0: number; y1: number }
+export interface Solid {
+  x0: number;
+  z0: number;
+  x1: number;
+  z1: number;
+  y0: number;
+  y1: number;
+}
 
 const toColor = (c: ColorLike) => (c instanceof THREE.Color ? c : new THREE.Color(c));
 
@@ -27,11 +34,15 @@ class Mesher {
 
   build() {
     const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(this.positions, 3));
-    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(this.normals, 3));
-    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(this.uvs, 2));
-    geometry.setAttribute('color', new THREE.Float32BufferAttribute(this.colors, 3));
-    geometry.setIndex(this.positions.length / 3 > 65535 ? new THREE.Uint32BufferAttribute(this.indices, 1) : new THREE.Uint16BufferAttribute(this.indices, 1));
+    geometry.setAttribute("position", new THREE.Float32BufferAttribute(this.positions, 3));
+    geometry.setAttribute("normal", new THREE.Float32BufferAttribute(this.normals, 3));
+    geometry.setAttribute("uv", new THREE.Float32BufferAttribute(this.uvs, 2));
+    geometry.setAttribute("color", new THREE.Float32BufferAttribute(this.colors, 3));
+    geometry.setIndex(
+      this.positions.length / 3 > 65535
+        ? new THREE.Uint32BufferAttribute(this.indices, 1)
+        : new THREE.Uint16BufferAttribute(this.indices, 1),
+    );
     geometry.computeBoundingSphere();
     return geometry;
   }
@@ -95,19 +106,40 @@ export class Kit {
   }
 
   /** Quad from four local corners, counter-clockwise seen from the front. */
-  quad(material: MaterialName, corners: [Vec3, Vec3, Vec3, Vec3], uvs: [number, number][], color: ColorLike, normal?: Vec3) {
+  quad(
+    material: MaterialName,
+    corners: [Vec3, Vec3, Vec3, Vec3],
+    uvs: [number, number][],
+    color: ColorLike,
+    normal?: Vec3,
+  ) {
     const mesher = this.mesher(material);
     const c = toColor(color);
     const [a, b, , d] = corners;
     if (normal) n.set(...normal);
-    else n.set(b[0] - a[0], b[1] - a[1], b[2] - a[2]).cross(new THREE.Vector3(d[0] - a[0], d[1] - a[1], d[2] - a[2])).normalize();
+    else
+      n.set(b[0] - a[0], b[1] - a[1], b[2] - a[2])
+        .cross(new THREE.Vector3(d[0] - a[0], d[1] - a[1], d[2] - a[2]))
+        .normalize();
     n.applyMatrix3(this.normalMatrix).normalize();
-    const base = corners.map((corner, i) => mesher.vertex(p.set(...corner).applyMatrix4(this.matrix), n, uvs[i]![0], uvs[i]![1], c));
+    const base = corners.map((corner, i) =>
+      mesher.vertex(p.set(...corner).applyMatrix4(this.matrix), n, uvs[i]![0], uvs[i]![1], c),
+    );
     mesher.indices.push(base[0]!, base[1]!, base[2]!, base[0]!, base[2]!, base[3]!);
   }
 
   /** Axis-aligned box in the local frame with box-projected metric UVs. */
-  box(material: MaterialName, x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, color: ColorLike, options: BoxOptions = {}) {
+  box(
+    material: MaterialName,
+    x0: number,
+    y0: number,
+    z0: number,
+    x1: number,
+    y1: number,
+    z1: number,
+    color: ColorLike,
+    options: BoxOptions = {},
+  ) {
     if (x1 < x0) [x0, x1] = [x1, x0];
     if (y1 < y0) [y0, y1] = [y1, y0];
     if (z1 < z0) [z0, z1] = [z1, z0];
@@ -116,15 +148,87 @@ export class Kit {
       this.chamferBox(material, [x0, y0, z0], [x1, y1, z1], b, color, options);
       return;
     }
-    const skip = options.skip ?? '';
+    const skip = options.skip ?? "";
     const s = options.shift ?? 0;
     const uv = (u: number, v: number): [number, number] => (options.swap ? [v + s, u + s] : [u + s, v + s]);
-    if (!skip.includes('pz')) this.quad(material, [[x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]], [uv(x0, y0), uv(x1, y0), uv(x1, y1), uv(x0, y1)], color, [0, 0, 1]);
-    if (!skip.includes('nz')) this.quad(material, [[x1, y0, z0], [x0, y0, z0], [x0, y1, z0], [x1, y1, z0]], [uv(-x1, y0), uv(-x0, y0), uv(-x0, y1), uv(-x1, y1)], color, [0, 0, -1]);
-    if (!skip.includes('px')) this.quad(material, [[x1, y0, z1], [x1, y0, z0], [x1, y1, z0], [x1, y1, z1]], [uv(-z1, y0), uv(-z0, y0), uv(-z0, y1), uv(-z1, y1)], color, [1, 0, 0]);
-    if (!skip.includes('nx')) this.quad(material, [[x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0]], [uv(z0, y0), uv(z1, y0), uv(z1, y1), uv(z0, y1)], color, [-1, 0, 0]);
-    if (!skip.includes('py')) this.quad(material, [[x0, y1, z1], [x1, y1, z1], [x1, y1, z0], [x0, y1, z0]], [uv(x0, -z1), uv(x1, -z1), uv(x1, -z0), uv(x0, -z0)], color, [0, 1, 0]);
-    if (!skip.includes('ny')) this.quad(material, [[x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1]], [uv(x0, z0), uv(x1, z0), uv(x1, z1), uv(x0, z1)], color, [0, -1, 0]);
+    if (!skip.includes("pz"))
+      this.quad(
+        material,
+        [
+          [x0, y0, z1],
+          [x1, y0, z1],
+          [x1, y1, z1],
+          [x0, y1, z1],
+        ],
+        [uv(x0, y0), uv(x1, y0), uv(x1, y1), uv(x0, y1)],
+        color,
+        [0, 0, 1],
+      );
+    if (!skip.includes("nz"))
+      this.quad(
+        material,
+        [
+          [x1, y0, z0],
+          [x0, y0, z0],
+          [x0, y1, z0],
+          [x1, y1, z0],
+        ],
+        [uv(-x1, y0), uv(-x0, y0), uv(-x0, y1), uv(-x1, y1)],
+        color,
+        [0, 0, -1],
+      );
+    if (!skip.includes("px"))
+      this.quad(
+        material,
+        [
+          [x1, y0, z1],
+          [x1, y0, z0],
+          [x1, y1, z0],
+          [x1, y1, z1],
+        ],
+        [uv(-z1, y0), uv(-z0, y0), uv(-z0, y1), uv(-z1, y1)],
+        color,
+        [1, 0, 0],
+      );
+    if (!skip.includes("nx"))
+      this.quad(
+        material,
+        [
+          [x0, y0, z0],
+          [x0, y0, z1],
+          [x0, y1, z1],
+          [x0, y1, z0],
+        ],
+        [uv(z0, y0), uv(z1, y0), uv(z1, y1), uv(z0, y1)],
+        color,
+        [-1, 0, 0],
+      );
+    if (!skip.includes("py"))
+      this.quad(
+        material,
+        [
+          [x0, y1, z1],
+          [x1, y1, z1],
+          [x1, y1, z0],
+          [x0, y1, z0],
+        ],
+        [uv(x0, -z1), uv(x1, -z1), uv(x1, -z0), uv(x0, -z0)],
+        color,
+        [0, 1, 0],
+      );
+    if (!skip.includes("ny"))
+      this.quad(
+        material,
+        [
+          [x0, y0, z0],
+          [x1, y0, z0],
+          [x1, y0, z1],
+          [x0, y0, z1],
+        ],
+        [uv(x0, z0), uv(x1, z0), uv(x1, z1), uv(x0, z1)],
+        color,
+        [0, -1, 0],
+      );
   }
 
   /**
@@ -157,8 +261,11 @@ export class Kit {
       const order = e1.cross(e2).dot(outward) < 0 ? [...points.keys()].reverse() : [...points.keys()];
       const ids = order.map((i) => {
         const q = points[i]!.map((v, k) => v + center[k]!);
-        const axis = axes[i]!, sign = signs[i]!;
-        n.set(axis === 0 ? sign : 0, axis === 1 ? sign : 0, axis === 2 ? sign : 0).applyMatrix3(this.normalMatrix).normalize();
+        const axis = axes[i]!,
+          sign = signs[i]!;
+        n.set(axis === 0 ? sign : 0, axis === 1 ? sign : 0, axis === 2 ? sign : 0)
+          .applyMatrix3(this.normalMatrix)
+          .normalize();
         const [u, v] = uvOf(q, axis, sign);
         return mesher.vertex(p.set(q[0]!, q[1]!, q[2]!).applyMatrix4(this.matrix), n, u, v, c);
       });
@@ -166,33 +273,75 @@ export class Kit {
     };
     const pt = (k: number, vk: number, a: number, va: number, bb: number, vb: number) => {
       const q = [0, 0, 0];
-      q[k] = vk; q[a] = va; q[bb] = vb;
+      q[k] = vk;
+      q[a] = va;
+      q[bb] = vb;
       return q;
     };
     for (let k = 0; k < 3; k++) {
-      const a = (k + 1) % 3, bb = (k + 2) % 3;
+      const a = (k + 1) % 3,
+        bb = (k + 2) % 3;
       for (const sign of [-1, 1]) {
         const out = [0, 0, 0];
         out[k] = sign;
-        const skipKey = `${sign > 0 ? 'p' : 'n'}${'xyz'[k]}`;
+        const skipKey = `${sign > 0 ? "p" : "n"}${"xyz"[k]}`;
         if (options.skip?.includes(skipKey)) continue;
-        poly([pt(k, sign * h[k]!, a, -hin[a]!, bb, -hin[bb]!), pt(k, sign * h[k]!, a, hin[a]!, bb, -hin[bb]!), pt(k, sign * h[k]!, a, hin[a]!, bb, hin[bb]!), pt(k, sign * h[k]!, a, -hin[a]!, bb, hin[bb]!)], [k, k, k, k], [sign, sign, sign, sign], out);
+        poly(
+          [
+            pt(k, sign * h[k]!, a, -hin[a]!, bb, -hin[bb]!),
+            pt(k, sign * h[k]!, a, hin[a]!, bb, -hin[bb]!),
+            pt(k, sign * h[k]!, a, hin[a]!, bb, hin[bb]!),
+            pt(k, sign * h[k]!, a, -hin[a]!, bb, hin[bb]!),
+          ],
+          [k, k, k, k],
+          [sign, sign, sign, sign],
+          out,
+        );
       }
     }
     // Edge strips.
-    for (const [a, bb, k] of [[0, 1, 2], [0, 2, 1], [1, 2, 0]] as const) {
-      for (const sa of [-1, 1]) for (const sb of [-1, 1]) {
-        const P = (vk: number) => { const q = [0, 0, 0]; q[a] = sa * h[a]!; q[bb] = sb * hin[bb]!; q[k] = vk; return q; };
-        const Q = (vk: number) => { const q = [0, 0, 0]; q[a] = sa * hin[a]!; q[bb] = sb * h[bb]!; q[k] = vk; return q; };
-        const out = [0, 0, 0];
-        out[a] = sa; out[bb] = sb;
-        poly([P(-hin[k]!), P(hin[k]!), Q(hin[k]!), Q(-hin[k]!)], [a, a, bb, bb], [sa, sa, sb, sb], out);
-      }
+    for (const [a, bb, k] of [
+      [0, 1, 2],
+      [0, 2, 1],
+      [1, 2, 0],
+    ] as const) {
+      for (const sa of [-1, 1])
+        for (const sb of [-1, 1]) {
+          const P = (vk: number) => {
+            const q = [0, 0, 0];
+            q[a] = sa * h[a]!;
+            q[bb] = sb * hin[bb]!;
+            q[k] = vk;
+            return q;
+          };
+          const Q = (vk: number) => {
+            const q = [0, 0, 0];
+            q[a] = sa * hin[a]!;
+            q[bb] = sb * h[bb]!;
+            q[k] = vk;
+            return q;
+          };
+          const out = [0, 0, 0];
+          out[a] = sa;
+          out[bb] = sb;
+          poly([P(-hin[k]!), P(hin[k]!), Q(hin[k]!), Q(-hin[k]!)], [a, a, bb, bb], [sa, sa, sb, sb], out);
+        }
     }
     // Corner triangles.
-    for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) {
-      poly([[sx * h[0]!, sy * hin[1]!, sz * hin[2]!], [sx * hin[0]!, sy * h[1]!, sz * hin[2]!], [sx * hin[0]!, sy * hin[1]!, sz * h[2]!]], [0, 1, 2], [sx, sy, sz], [sx, sy, sz]);
-    }
+    for (const sx of [-1, 1])
+      for (const sy of [-1, 1])
+        for (const sz of [-1, 1]) {
+          poly(
+            [
+              [sx * h[0]!, sy * hin[1]!, sz * hin[2]!],
+              [sx * hin[0]!, sy * h[1]!, sz * hin[2]!],
+              [sx * hin[0]!, sy * hin[1]!, sz * h[2]!],
+            ],
+            [0, 1, 2],
+            [sx, sy, sz],
+            [sx, sy, sz],
+          );
+        }
   }
 
   /** Runs `draw` with a different edge chamfer. */
@@ -217,12 +366,18 @@ export class Kit {
    * Appends a three.js geometry placed by `local` (relative to the current frame).
    * `uv: 'box'` replaces UVs with box projection in the geometry's own meters.
    */
-  geometry(material: MaterialName, source: THREE.BufferGeometry, local: THREE.Matrix4 | null, color: ColorLike, uv: 'box' | 'keep' = 'box') {
+  geometry(
+    material: MaterialName,
+    source: THREE.BufferGeometry,
+    local: THREE.Matrix4 | null,
+    color: ColorLike,
+    uv: "box" | "keep" = "box",
+  ) {
     const geometry = source.clone();
-    if (!geometry.getAttribute('normal')) geometry.computeVertexNormals();
-    const position = geometry.getAttribute('position');
-    const normal = geometry.getAttribute('normal');
-    const uvs = geometry.getAttribute('uv');
+    if (!geometry.getAttribute("normal")) geometry.computeVertexNormals();
+    const position = geometry.getAttribute("position");
+    const normal = geometry.getAttribute("normal");
+    const uvs = geometry.getAttribute("uv");
     const full = local ? this.matrix.clone().multiply(local) : this.matrix;
     const normalMatrix = new THREE.Matrix3().getNormalMatrix(full);
     const scale = local ? new THREE.Vector3().setFromMatrixScale(local) : new THREE.Vector3(1, 1, 1);
@@ -234,9 +389,13 @@ export class Kit {
       n.fromBufferAttribute(normal, i);
       let u = 0;
       let v = 0;
-      if (uv === 'box') {
-        const ax = Math.abs(n.x), ay = Math.abs(n.y), az = Math.abs(n.z);
-        const sx = p.x * scale.x, sy = p.y * scale.y, sz = p.z * scale.z;
+      if (uv === "box") {
+        const ax = Math.abs(n.x),
+          ay = Math.abs(n.y),
+          az = Math.abs(n.z);
+        const sx = p.x * scale.x,
+          sy = p.y * scale.y,
+          sz = p.z * scale.z;
         if (ay >= ax && ay >= az) [u, v] = [sx, sz];
         else if (ax >= az) [u, v] = [sz, sy];
         else [u, v] = [sx, sy];
@@ -257,7 +416,10 @@ export class Kit {
 
   /** Collision box given in the local frame; stored as a world-space AABB. */
   solid(x0: number, z0: number, x1: number, z1: number, y0: number, y1: number) {
-    const box = new THREE.Box3(new THREE.Vector3(Math.min(x0, x1), y0, Math.min(z0, z1)), new THREE.Vector3(Math.max(x0, x1), y1, Math.max(z0, z1))).applyMatrix4(this.matrix);
+    const box = new THREE.Box3(
+      new THREE.Vector3(Math.min(x0, x1), y0, Math.min(z0, z1)),
+      new THREE.Vector3(Math.max(x0, x1), y1, Math.max(z0, z1)),
+    ).applyMatrix4(this.matrix);
     this.solids.push({ x0: box.min.x, z0: box.min.z, x1: box.max.x, z1: box.max.z, y0: box.min.y, y1: box.max.y });
   }
 
@@ -266,7 +428,10 @@ export class Kit {
     return new THREE.Vector3(x, y, z).applyMatrix4(this.matrix);
   }
 
-  build(materials: Record<MaterialName, THREE.Material>, shadows: (name: MaterialName) => { cast: boolean; receive: boolean }) {
+  build(
+    materials: Record<MaterialName, THREE.Material>,
+    shadows: (name: MaterialName) => { cast: boolean; receive: boolean },
+  ) {
     const group = new THREE.Group();
     for (const [name, mesher] of this.meshers) {
       if (!mesher.indices.length) continue;
@@ -286,7 +451,8 @@ export class Kit {
 /** Rounded rectangle shape centered at the origin. */
 export function roundedRect(width: number, height: number, radius: number) {
   const r = Math.min(radius, width / 2, height / 2);
-  const x = -width / 2, y = -height / 2;
+  const x = -width / 2,
+    y = -height / 2;
   const shape = new THREE.Shape();
   shape.moveTo(x + r, y);
   shape.lineTo(x + width - r, y);
@@ -302,7 +468,11 @@ export function roundedRect(width: number, height: number, radius: number) {
 
 /** Matrix helper: translate, then rotate (Euler XYZ), then scale. */
 export function trs(x: number, y: number, z: number, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1) {
-  return new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)), new THREE.Vector3(sx, sy, sz));
+  return new THREE.Matrix4().compose(
+    new THREE.Vector3(x, y, z),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)),
+    new THREE.Vector3(sx, sy, sz),
+  );
 }
 
 /** Small deterministic random generator so the house looks the same on every visit. */

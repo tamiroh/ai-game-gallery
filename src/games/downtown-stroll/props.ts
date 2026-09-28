@@ -1,16 +1,35 @@
-import * as THREE from 'three';
-import { Builder } from './builder';
-import { BLOCK, BLOCK_RANGE, CURB_HEIGHT, DIRECTIONS, ROAD_COUNT, SIDEWALK, blockCenter, isPark, range, rightOf, rng, roadCenter, signalAt, type Signal } from './layout';
+import * as THREE from "three";
+import { Builder } from "./builder";
+import {
+  BLOCK,
+  BLOCK_RANGE,
+  CURB_HEIGHT,
+  DIRECTIONS,
+  ROAD_COUNT,
+  SIDEWALK,
+  blockCenter,
+  isPark,
+  range,
+  rightOf,
+  rng,
+  roadCenter,
+  signalAt,
+  type Signal,
+} from "./layout";
 
-export interface Circle { x: number; z: number; r: number }
+export interface Circle {
+  x: number;
+  z: number;
+  r: number;
+}
 
 const c = (hex: number) => new THREE.Color(hex);
 const at = (x: number, y: number, z: number) => new THREE.Matrix4().makeTranslation(x, y, z);
 
 function leafTexture() {
-  const canvas = document.createElement('canvas');
+  const canvas = document.createElement("canvas");
   canvas.width = canvas.height = 256;
-  const context = canvas.getContext('2d')!;
+  const context = canvas.getContext("2d")!;
   const random = rng(3);
   for (let i = 0; i < 260; i++) {
     const r = Math.hypot(random() - 0.5, random() - 0.5);
@@ -43,27 +62,36 @@ function canopyGeometry(seed: number) {
   const quad = new THREE.PlaneGeometry(1.5, 1.5);
   for (let i = 0; i < 150; i++) {
     const dir = new THREE.Vector3(random() * 2 - 1, random() * 2 - 1, random() * 2 - 1);
-    if (dir.lengthSq() > 1) { i--; continue; }
+    if (dir.lengthSq() > 1) {
+      i--;
+      continue;
+    }
     const p = new THREE.Vector3(dir.x * 2.8, dir.y * 1.9, dir.z * 2.8).add(center);
-    const rotation = new THREE.Quaternion().setFromEuler(new THREE.Euler(random() * Math.PI, random() * Math.PI, random() * Math.PI));
+    const rotation = new THREE.Quaternion().setFromEuler(
+      new THREE.Euler(random() * Math.PI, random() * Math.PI, random() * Math.PI),
+    );
     const normal = p.clone().sub(center).normalize();
     normal.y += 0.35;
     normal.normalize();
     const base = positions.length / 3;
-    const position = quad.getAttribute('position');
+    const position = quad.getAttribute("position");
     const scale = 0.8 + random() * 0.6;
     for (let v = 0; v < position.count; v++) {
-      const vertex = new THREE.Vector3().fromBufferAttribute(position, v).multiplyScalar(scale).applyQuaternion(rotation).add(p);
+      const vertex = new THREE.Vector3()
+        .fromBufferAttribute(position, v)
+        .multiplyScalar(scale)
+        .applyQuaternion(rotation)
+        .add(p);
       positions.push(vertex.x, vertex.y, vertex.z);
       normals.push(normal.x, normal.y, normal.z);
-      uvs.push(quad.getAttribute('uv').getX(v), quad.getAttribute('uv').getY(v));
+      uvs.push(quad.getAttribute("uv").getX(v), quad.getAttribute("uv").getY(v));
     }
     quad.index!.array.forEach((index) => indices.push(base + index));
   }
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
+  geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
   geometry.setIndex(indices);
   return geometry;
 }
@@ -77,7 +105,9 @@ function trunkGeometry() {
     const branch = new THREE.CylinderGeometry(0.035, 0.07, 2.4, 6).translate(0, 1.2, 0);
     const m = new THREE.Matrix4().compose(
       new THREE.Vector3(0, 3.2 + random() * 1.2, 0),
-      new THREE.Quaternion().setFromEuler(new THREE.Euler(0.7 + random() * 0.4, (i / 6) * Math.PI * 2 + random(), 0, 'YXZ')),
+      new THREE.Quaternion().setFromEuler(
+        new THREE.Euler(0.7 + random() * 0.4, (i / 6) * Math.PI * 2 + random(), 0, "YXZ"),
+      ),
       new THREE.Vector3(1, 1, 1),
     );
     b.geometry(branch, m, bark);
@@ -91,7 +121,11 @@ function streetLightGeometry() {
   b.geometry(new THREE.CylinderGeometry(0.16, 0.2, 0.6, 12), at(0, 0.3, 0), paint);
   b.geometry(new THREE.CylinderGeometry(0.07, 0.11, 8, 10), at(0, 4, 0), paint);
   // Arm curving out over the road along local -x.
-  const curve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(0, 7.6, 0), new THREE.Vector3(0, 8.4, 0), new THREE.Vector3(-2.2, 8.3, 0));
+  const curve = new THREE.QuadraticBezierCurve3(
+    new THREE.Vector3(0, 7.6, 0),
+    new THREE.Vector3(0, 8.4, 0),
+    new THREE.Vector3(-2.2, 8.3, 0),
+  );
   b.geometry(new THREE.TubeGeometry(curve, 10, 0.055, 6), new THREE.Matrix4(), paint);
   b.geometry(new THREE.BoxGeometry(0.9, 0.16, 0.36), at(-2.4, 8.25, 0), paint);
   b.geometry(new THREE.BoxGeometry(0.72, 0.03, 0.28), at(-2.4, 8.16, 0), c(0xe4e1d6));
@@ -110,7 +144,11 @@ function signalPoleGeometry() {
     b.geometry(new THREE.BoxGeometry(0.62, 1.3, 0.03), at(x, 5.35, -0.14), c(0x161616));
     for (const y of [5.7, 5.35, 5.0]) {
       // Visor over each lamp.
-      b.geometry(new THREE.CylinderGeometry(0.15, 0.15, 0.2, 12, 1, true, -Math.PI / 2, Math.PI).rotateX(-Math.PI / 2), at(x, y, 0.22), housing);
+      b.geometry(
+        new THREE.CylinderGeometry(0.15, 0.15, 0.2, 12, 1, true, -Math.PI / 2, Math.PI).rotateX(-Math.PI / 2),
+        at(x, y, 0.22),
+        housing,
+      );
     }
   }
   // Pedestrian signal on the pole.
@@ -174,7 +212,11 @@ function frame(px: number, py: number, pz: number, xDir: [number, number], yaw =
   const x = new THREE.Vector3(xDir[0], 0, xDir[1]);
   const y = new THREE.Vector3(0, 1, 0);
   const z = new THREE.Vector3().crossVectors(x, y);
-  return new THREE.Matrix4().makeBasis(x, y, z).multiply(new THREE.Matrix4().makeRotationY(yaw)).setPosition(px, py, pz).scale(new THREE.Vector3(scale, scale, scale));
+  return new THREE.Matrix4()
+    .makeBasis(x, y, z)
+    .multiply(new THREE.Matrix4().makeRotationY(yaw))
+    .setPosition(px, py, pz)
+    .scale(new THREE.Vector3(scale, scale, scale));
 }
 
 export function createProps(seed = 5) {
@@ -194,9 +236,15 @@ export function createProps(seed = 5) {
   const sidewalkY = CURB_HEIGHT;
   const addTree = (x: number, z: number, y = sidewalkY, pit = true) => {
     const s = range(random, 0.8, 1.2);
-    const m = new THREE.Matrix4().makeRotationY(random() * Math.PI * 2).scale(new THREE.Vector3(s, s * range(random, 0.9, 1.15), s)).setPosition(x, y, z);
+    const m = new THREE.Matrix4()
+      .makeRotationY(random() * Math.PI * 2)
+      .scale(new THREE.Vector3(s, s * range(random, 0.9, 1.15), s))
+      .setPosition(x, y, z);
     trees.add(m);
-    (random() < 0.5 ? canopyA : canopyB).add(m, new THREE.Color().setHSL(range(random, 0.14, 0.3), range(random, 0.25, 0.5), range(random, 0.72, 0.9)));
+    (random() < 0.5 ? canopyA : canopyB).add(
+      m,
+      new THREE.Color().setHSL(range(random, 0.14, 0.3), range(random, 0.25, 0.5), range(random, 0.72, 0.9)),
+    );
     if (pit) pits.add(at(x, sidewalkY + 0.004, z));
     circles.push({ x, z, r: 0.3 });
   };
@@ -209,7 +257,10 @@ export function createProps(seed = 5) {
       // Each edge: outward normal toward the road, and the direction along the curb.
       for (const [nx, nz] of DIRECTIONS) {
         const [ax, az] = rightOf(nx, nz);
-        const edge = (t: number, inset: number): [number, number] => [cx + nx * (half - inset) + ax * t, cz + nz * (half - inset) + az * t];
+        const edge = (t: number, inset: number): [number, number] => [
+          cx + nx * (half - inset) + ax * t,
+          cz + nz * (half - inset) + az * t,
+        ];
         const offset = (bx * 3 + bz * 5 + nx + nz * 2) % 2 ? 0 : 15;
         for (let t = -half + 12 + offset; t <= half - 12; t += 30) {
           const [x, z] = edge(t, 0.55);
@@ -276,7 +327,11 @@ export function createProps(seed = 5) {
   }
 
   const lampGeometry = new THREE.CircleGeometry(0.11, 14);
-  const lamps = new THREE.InstancedMesh(lampGeometry, new THREE.MeshBasicMaterial({ color: 0xffffff }), heads.length * 3);
+  const lamps = new THREE.InstancedMesh(
+    lampGeometry,
+    new THREE.MeshBasicMaterial({ color: 0xffffff }),
+    heads.length * 3,
+  );
   const poleFrames = poles.matrices;
   let lamp = 0;
   heads.forEach((head, h) => {
@@ -284,29 +339,48 @@ export function createProps(seed = 5) {
     const x = head.slot === 0 ? -3.9 : -7.4;
     for (const y of [5.7, 5.35, 5.0]) lamps.setMatrixAt(lamp++, pole.clone().multiply(at(x, y, 0.135)));
   });
-  let lastStates = '';
-  const colors = { red: [new THREE.Color(7, 0.35, 0.2), new THREE.Color(0.1, 0.02, 0.01)], yellow: [new THREE.Color(7, 3.6, 0.3), new THREE.Color(0.1, 0.06, 0.01)], green: [new THREE.Color(0.4, 6, 3.2), new THREE.Color(0.01, 0.07, 0.04)] };
+  let lastStates = "";
+  const colors = {
+    red: [new THREE.Color(7, 0.35, 0.2), new THREE.Color(0.1, 0.02, 0.01)],
+    yellow: [new THREE.Color(7, 3.6, 0.3), new THREE.Color(0.1, 0.06, 0.01)],
+    green: [new THREE.Color(0.4, 6, 3.2), new THREE.Color(0.01, 0.07, 0.04)],
+  };
   const updateSignals = (time: number) => {
-    const states = heads.map((head) => signalAt(head.i, head.j, head.axis, time)[0]).join('');
+    const states = heads.map((head) => signalAt(head.i, head.j, head.axis, time)[0]).join("");
     if (states === lastStates) return;
     lastStates = states;
     heads.forEach((head, h) => {
       const state: Signal = signalAt(head.i, head.j, head.axis, time);
-      (['red', 'yellow', 'green'] as const).forEach((name, k) => lamps.setColorAt(h * 3 + k, colors[name][name === state ? 0 : 1]!));
+      (["red", "yellow", "green"] as const).forEach((name, k) =>
+        lamps.setColorAt(h * 3 + k, colors[name][name === state ? 0 : 1]!),
+      );
     });
     lamps.instanceColor!.needsUpdate = true;
   };
   updateSignals(0);
   group.add(lamps);
 
-  const standard = (params: THREE.MeshStandardMaterialParameters) => new THREE.MeshStandardMaterial({ vertexColors: true, ...params });
+  const standard = (params: THREE.MeshStandardMaterialParameters) =>
+    new THREE.MeshStandardMaterial({ vertexColors: true, ...params });
   group.add(lights.mesh(streetLightGeometry(), standard({ roughness: 0.5, metalness: 0.6 })));
   group.add(poles.mesh(signalPoleGeometry(), standard({ roughness: 0.55, metalness: 0.5 })));
   group.add(trees.mesh(trunkGeometry(), standard({ roughness: 0.95 })));
-  const leaves = new THREE.MeshStandardMaterial({ map: leafTexture(), alphaTest: 0.45, side: THREE.DoubleSide, roughness: 0.8, emissive: 0x0c1606 });
+  const leaves = new THREE.MeshStandardMaterial({
+    map: leafTexture(),
+    alphaTest: 0.45,
+    side: THREE.DoubleSide,
+    roughness: 0.8,
+    emissive: 0x0c1606,
+  });
   group.add(canopyA.mesh(canopyGeometry(21), leaves));
   group.add(canopyB.mesh(canopyGeometry(42), leaves));
-  group.add(pits.mesh(new THREE.BoxGeometry(1.1, 0.01, 1.1), new THREE.MeshStandardMaterial({ color: 0x3a3029, roughness: 1 }), false));
+  group.add(
+    pits.mesh(
+      new THREE.BoxGeometry(1.1, 0.01, 1.1),
+      new THREE.MeshStandardMaterial({ color: 0x3a3029, roughness: 1 }),
+      false,
+    ),
+  );
   group.add(hydrants.mesh(hydrantGeometry(), standard({ roughness: 0.45, metalness: 0.2 })));
   group.add(benches.mesh(benchGeometry(), standard({ roughness: 0.7 })));
   group.add(bins.mesh(binGeometry(), standard({ roughness: 0.55, metalness: 0.4, side: THREE.DoubleSide })));

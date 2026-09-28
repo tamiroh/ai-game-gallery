@@ -1,8 +1,8 @@
 // @ts-check
-import { defineConfig } from 'astro/config';
+import { defineConfig } from "astro/config";
 
 // https://astro.build/config
 export default defineConfig({
   site: process.env.SITE_URL,
-  base: '/ai-game-gallery',
+  base: "/ai-game-gallery",
 });

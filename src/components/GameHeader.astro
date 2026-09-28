@@ -1,17 +1,40 @@
 ---
-import { sitePath } from '../lib/paths';
-interface Props { home?: boolean }
+import { sitePath } from "../lib/paths";
+interface Props {
+  home?: boolean;
+}
 const { home = false } = Astro.props;
 ---
+
 <header class="gallery-header">
   <nav aria-label="Gallery navigation">
-    <a href={sitePath()}>{home ? 'AI Game Gallery' : '← Back to games'}</a>
+    <a href={sitePath()}>{home ? "AI Game Gallery" : "← Back to games"}</a>
   </nav>
 </header>
 <style>
-  .gallery-header { box-sizing: border-box; background: #101622; color: #d9e2f1; border-bottom: 1px solid #303b50; padding: 10px 16px; font: 13px/1.5 system-ui, sans-serif; }
-  nav { display: flex; align-items: center; }
-  a { color: inherit; text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  a:focus-visible { outline: 2px solid #ffcf75; outline-offset: 4px; }
+  .gallery-header {
+    box-sizing: border-box;
+    background: #101622;
+    color: #d9e2f1;
+    border-bottom: 1px solid #303b50;
+    padding: 10px 16px;
+    font:
+      13px/1.5 system-ui,
+      sans-serif;
+  }
+  nav {
+    display: flex;
+    align-items: center;
+  }
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+  a:hover {
+    text-decoration: underline;
+  }
+  a:focus-visible {
+    outline: 2px solid #ffcf75;
+    outline-offset: 4px;
+  }
 </style>

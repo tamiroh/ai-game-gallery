@@ -1,14 +1,18 @@
-import * as THREE from 'three';
+import * as THREE from "three";
 
-const assetUrls = import.meta.glob<string>('./assets/*.webp', { eager: true, query: '?url', import: 'default' });
+const assetUrls = import.meta.glob<string>("./assets/*.webp", { eager: true, query: "?url", import: "default" });
 const assetUrl = (name: string) => {
   const url = assetUrls[`./assets/${name}.webp`];
   if (!url) throw new Error(`Missing asset ${name}`);
   return url;
 };
 
-export type SurfaceName = 'asphalt' | 'pavers' | 'brick' | 'concrete' | 'sandstone' | 'grass';
-export interface Surface { color: THREE.Texture; normal: THREE.Texture; rough: THREE.Texture }
+export type SurfaceName = "asphalt" | "pavers" | "brick" | "concrete" | "sandstone" | "grass";
+export interface Surface {
+  color: THREE.Texture;
+  normal: THREE.Texture;
+  rough: THREE.Texture;
+}
 export type Surfaces = Record<SurfaceName, Surface>;
 
 export function loadSurfaces(manager: THREE.LoadingManager, anisotropy: number): Surfaces {
@@ -20,18 +24,22 @@ export function loadSurfaces(manager: THREE.LoadingManager, anisotropy: number):
     if (color) texture.colorSpace = THREE.SRGBColorSpace;
     return texture;
   };
-  const surface = (name: SurfaceName): Surface => ({ color: load(`${name}-color`, true), normal: load(`${name}-normal`, false), rough: load(`${name}-rough`, false) });
+  const surface = (name: SurfaceName): Surface => ({
+    color: load(`${name}-color`, true),
+    normal: load(`${name}-normal`, false),
+    rough: load(`${name}-rough`, false),
+  });
   return {
-    asphalt: surface('asphalt'),
-    pavers: surface('pavers'),
-    brick: surface('brick'),
-    concrete: surface('concrete'),
-    sandstone: surface('sandstone'),
-    grass: surface('grass'),
+    asphalt: surface("asphalt"),
+    pavers: surface("pavers"),
+    brick: surface("brick"),
+    concrete: surface("concrete"),
+    sandstone: surface("sandstone"),
+    grass: surface("grass"),
   };
 }
 
-export const skyUrl = () => assetUrl('sky');
+export const skyUrl = () => assetUrl("sky");
 
 /** Standard material that tiles a scanned surface every `meters` of world-space UV. */
 export function surfaceMaterial(surface: Surface, meters: number, params: THREE.MeshStandardMaterialParameters = {}) {
@@ -76,12 +84,122 @@ export interface FacadeStyle {
 }
 
 export const FACADES = {
-  brick: { kind: FacadeKind.Punched, bay: 3, floor: 3.3, window: [0.85, 0.95, 2.15, 2.75], frame: 0.075, frameColor: 0xe9e5dc, frameMetal: 0, glassColor: 0x07090b, glassMetal: 0, mullions: 2, transom: true, trim: 0xcfc3ad, roomBays: 1, roomDepth: 5, interior: 0.15, wall: { surface: 'brick', meters: 2.2 }, wallColor: 0xffffff },
-  sandstone: { kind: FacadeKind.Punched, bay: 3.6, floor: 3.9, window: [1.0, 0.9, 2.6, 3.3], frame: 0.08, frameColor: 0x2d2822, frameMetal: 0.4, glassColor: 0x06080a, glassMetal: 0, mullions: 2, transom: true, trim: null, roomBays: 1, roomDepth: 6, interior: 0.14, wall: { surface: 'sandstone', meters: 2.4 }, wallColor: 0xffffff },
-  plaster: { kind: FacadeKind.Punched, bay: 3.2, floor: 3.1, window: [0.65, 0.85, 2.55, 2.55], frame: 0.06, frameColor: 0xd9dcdd, frameMetal: 0.5, glassColor: 0x06080a, glassMetal: 0, mullions: 3, transom: false, trim: 0xe3dccd, roomBays: 1, roomDepth: 4.5, interior: 0.16, wall: { surface: 'concrete', meters: 3 }, wallColor: 0xffffff },
-  ribbon: { kind: FacadeKind.Ribbon, bay: 3, floor: 3.6, window: [0, 1.0, 3, 3.15], frame: 0.05, frameColor: 0x303438, frameMetal: 0.7, glassColor: 0x6a7a82, glassMetal: 0.55, mullions: 1, transom: false, trim: null, roomBays: 3, roomDepth: 8, interior: 0.1, wall: { surface: 'concrete', meters: 3.5 }, wallColor: 0xffffff },
-  curtain: { kind: FacadeKind.Curtain, bay: 1.6, floor: 3.9, window: [0, 0.75, 1.6, 3.2], frame: 0.035, frameColor: 0xa9afb4, frameMetal: 0.85, glassColor: 0x5d7680, glassMetal: 0.75, mullions: 1, transom: false, trim: null, roomBays: 4, roomDepth: 10, interior: 0.07, wall: null, wallColor: 0x22303a, wallRoughness: 0.14, wallMetalness: 0.7 },
-  shop: { kind: FacadeKind.Shop, bay: 4.2, floor: 4.8, window: [0.3, 0.5, 3.9, 3.55], frame: 0.06, frameColor: 0x1c1d1f, frameMetal: 0.6, glassColor: 0x06080a, glassMetal: 0, mullions: 2, transom: false, trim: null, roomBays: 3, roomDepth: 11, interior: 0.22, wall: { surface: 'sandstone', meters: 2.4 }, wallColor: 0xffffff },
+  brick: {
+    kind: FacadeKind.Punched,
+    bay: 3,
+    floor: 3.3,
+    window: [0.85, 0.95, 2.15, 2.75],
+    frame: 0.075,
+    frameColor: 0xe9e5dc,
+    frameMetal: 0,
+    glassColor: 0x07090b,
+    glassMetal: 0,
+    mullions: 2,
+    transom: true,
+    trim: 0xcfc3ad,
+    roomBays: 1,
+    roomDepth: 5,
+    interior: 0.15,
+    wall: { surface: "brick", meters: 2.2 },
+    wallColor: 0xffffff,
+  },
+  sandstone: {
+    kind: FacadeKind.Punched,
+    bay: 3.6,
+    floor: 3.9,
+    window: [1.0, 0.9, 2.6, 3.3],
+    frame: 0.08,
+    frameColor: 0x2d2822,
+    frameMetal: 0.4,
+    glassColor: 0x06080a,
+    glassMetal: 0,
+    mullions: 2,
+    transom: true,
+    trim: null,
+    roomBays: 1,
+    roomDepth: 6,
+    interior: 0.14,
+    wall: { surface: "sandstone", meters: 2.4 },
+    wallColor: 0xffffff,
+  },
+  plaster: {
+    kind: FacadeKind.Punched,
+    bay: 3.2,
+    floor: 3.1,
+    window: [0.65, 0.85, 2.55, 2.55],
+    frame: 0.06,
+    frameColor: 0xd9dcdd,
+    frameMetal: 0.5,
+    glassColor: 0x06080a,
+    glassMetal: 0,
+    mullions: 3,
+    transom: false,
+    trim: 0xe3dccd,
+    roomBays: 1,
+    roomDepth: 4.5,
+    interior: 0.16,
+    wall: { surface: "concrete", meters: 3 },
+    wallColor: 0xffffff,
+  },
+  ribbon: {
+    kind: FacadeKind.Ribbon,
+    bay: 3,
+    floor: 3.6,
+    window: [0, 1.0, 3, 3.15],
+    frame: 0.05,
+    frameColor: 0x303438,
+    frameMetal: 0.7,
+    glassColor: 0x6a7a82,
+    glassMetal: 0.55,
+    mullions: 1,
+    transom: false,
+    trim: null,
+    roomBays: 3,
+    roomDepth: 8,
+    interior: 0.1,
+    wall: { surface: "concrete", meters: 3.5 },
+    wallColor: 0xffffff,
+  },
+  curtain: {
+    kind: FacadeKind.Curtain,
+    bay: 1.6,
+    floor: 3.9,
+    window: [0, 0.75, 1.6, 3.2],
+    frame: 0.035,
+    frameColor: 0xa9afb4,
+    frameMetal: 0.85,
+    glassColor: 0x5d7680,
+    glassMetal: 0.75,
+    mullions: 1,
+    transom: false,
+    trim: null,
+    roomBays: 4,
+    roomDepth: 10,
+    interior: 0.07,
+    wall: null,
+    wallColor: 0x22303a,
+    wallRoughness: 0.14,
+    wallMetalness: 0.7,
+  },
+  shop: {
+    kind: FacadeKind.Shop,
+    bay: 4.2,
+    floor: 4.8,
+    window: [0.3, 0.5, 3.9, 3.55],
+    frame: 0.06,
+    frameColor: 0x1c1d1f,
+    frameMetal: 0.6,
+    glassColor: 0x06080a,
+    glassMetal: 0,
+    mullions: 2,
+    transom: false,
+    trim: null,
+    roomBays: 3,
+    roomDepth: 11,
+    interior: 0.22,
+    wall: { surface: "sandstone", meters: 2.4 },
+    wallColor: 0xffffff,
+  },
 } satisfies Record<string, FacadeStyle>;
 
 export type FacadeName = keyof typeof FACADES;
@@ -100,8 +218,8 @@ export function facadeMaterial(name: FacadeName, surfaces: Surfaces) {
   const style: FacadeStyle = FACADES[name];
   const [wx0, wy0, wx1, wy1] = style.window;
   const cellArea = style.bay * style.floor;
-  const coverGlass = ((wx1 - wx0) * (wy1 - wy0)) / cellArea * 0.9;
-  const coverFrame = (((wx1 - wx0) + 2 * style.frame) * ((wy1 - wy0) + 2 * style.frame)) / cellArea - coverGlass;
+  const coverGlass = (((wx1 - wx0) * (wy1 - wy0)) / cellArea) * 0.9;
+  const coverFrame = ((wx1 - wx0 + 2 * style.frame) * (wy1 - wy0 + 2 * style.frame)) / cellArea - coverGlass;
 
   const params: THREE.MeshStandardMaterialParameters = {
     color: style.wallColor,
@@ -116,26 +234,38 @@ export function facadeMaterial(name: FacadeName, surfaces: Surfaces) {
       clone.repeat.set(style.bay / style.wall!.meters, style.floor / style.wall!.meters);
       return clone;
     };
-    Object.assign(params, { map: repeat(surface.color), normalMap: repeat(surface.normal), roughnessMap: repeat(surface.rough) });
+    Object.assign(params, {
+      map: repeat(surface.color),
+      normalMap: repeat(surface.normal),
+      roughnessMap: repeat(surface.rough),
+    });
   }
   const material = new THREE.MeshStandardMaterial(params);
 
   material.onBeforeCompile = (shader) => {
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', `#include <common>
+      .replace(
+        "#include <common>",
+        `#include <common>
 attribute float seed;
 varying vec2 vBay;
 varying vec3 vWPos;
 varying vec3 vWNormal;
-varying float vSeed;`)
-      .replace('#include <project_vertex>', `#include <project_vertex>
+varying float vSeed;`,
+      )
+      .replace(
+        "#include <project_vertex>",
+        `#include <project_vertex>
 vBay = uv;
 vWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
 vWNormal = normalize(mat3(modelMatrix) * objectNormal);
-vSeed = seed;`);
+vSeed = seed;`,
+      );
 
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', `#include <common>
+      .replace(
+        "#include <common>",
+        `#include <common>
 varying vec2 vBay;
 varying vec3 vWPos;
 varying vec3 vWNormal;
@@ -185,11 +315,11 @@ FacadeSample facadeSample() {
     float x = mix(WIN.x, WIN.z, float(i) / ${glsl(style.mullions)});
     bars = max(bars, 1.0 - smoothstep(FRAME * 0.5 - e, FRAME * 0.5 + e, abs(m.x - x)));
   }
-  ${style.transom ? 'bars = max(bars, 1.0 - smoothstep(FRAME * 0.5 - e, FRAME * 0.5 + e, abs(m.y - mix(WIN.y, WIN.w, 0.74))));' : ''}
+  ${style.transom ? "bars = max(bars, 1.0 - smoothstep(FRAME * 0.5 - e, FRAME * 0.5 + e, abs(m.y - mix(WIN.y, WIN.w, 0.74))));" : ""}
   s.frame = max(outer - glass, glass * bars);
   s.glass = glass * (1.0 - bars);
   s.trim = 0.0;
-  ${style.trim === null ? '' : `s.trim = max(fbox(m, vec4(WIN.x - 0.1, WIN.y - FRAME - 0.12, WIN.z + 0.1, WIN.y - FRAME), e), fbox(m, vec4(WIN.x - 0.06, WIN.w + FRAME, WIN.z + 0.06, WIN.w + FRAME + 0.26), e));`}
+  ${style.trim === null ? "" : `s.trim = max(fbox(m, vec4(WIN.x - 0.1, WIN.y - FRAME - 0.12, WIN.z + 0.1, WIN.y - FRAME), e), fbox(m, vec4(WIN.x - 0.06, WIN.w + FRAME, WIN.z + 0.06, WIN.w + FRAME + 0.26), e));`}
   float under = step(WIN.x, m.x) * step(m.x, WIN.z) * step(m.y, WIN.y);
   s.grime = under * (1.0 - m.y / WIN.y) * (0.35 + 0.65 * fhash(vec2(floor(m.x * 7.0), cell.x + cell.y * 17.0 + vSeed))) * 0.8;
   s.grime += (1.0 - smoothstep(0.0, 2.5, vWPos.y)) * 0.35;
@@ -220,11 +350,15 @@ FacadeSample facadeSample() {
   if (t == tz) {
     col = wallTone * 0.9;
     col *= 0.85 + 0.15 * step(0.5, fract(hit.x / roomWidth * 2.0 + h4));
-    ${style.kind === FacadeKind.Shop ? `// Stocked shelves along the back wall.
+    ${
+      style.kind === FacadeKind.Shop
+        ? `// Stocked shelves along the back wall.
     float shelf = fract(hit.y / 0.42);
     vec2 slot = vec2(floor(hit.x / 0.28), floor(hit.y / 0.42));
     vec3 goods = 0.35 + 0.6 * vec3(fhash(slot + h1), fhash(slot + h2 + 3.0), fhash(slot + h3 + 7.0));
-    if (hit.y > 0.3 && hit.y < 2.3) col = shelf < 0.12 ? vec3(0.3) : mix(vec3(0.55), goods, 0.45) * (0.55 + 0.45 * step(0.25, fhash(slot * 1.7 + h4)));` : ''}
+    if (hit.y > 0.3 && hit.y < 2.3) col = shelf < 0.12 ? vec3(0.3) : mix(vec3(0.55), goods, 0.45) * (0.55 + 0.45 * step(0.25, fhash(slot * 1.7 + h4)));`
+        : ""
+    }
   } else if (t == tx) {
     col = wallTone * 0.72;
   } else if (d.y < 0.0) {
@@ -233,7 +367,7 @@ FacadeSample facadeSample() {
   } else {
     col = vec3(0.92, 0.92, 0.9);
     vec2 panel = abs(fract(hit.xz / vec2(2.4, 2.4)) - 0.5);
-    col += lit * ${style.kind === FacadeKind.Shop ? '1.4' : '0.55'} * step(panel.x, 0.14) * step(panel.y, 0.3);
+    col += lit * ${style.kind === FacadeKind.Shop ? "1.4" : "0.55"} * step(panel.x, 0.14) * step(panel.y, 0.3);
   }
   col *= mix(1.0, 0.38, clamp(hit.z / depth, 0.0, 1.0));
   col *= mix(0.55, 1.0, lit);
@@ -250,11 +384,11 @@ FacadeSample facadeSample() {
   }
 
   // Window blinds, lit from the street.
-  float blind = ${style.kind === FacadeKind.Shop ? '0.0' : 'h4 < 0.4 ? 0.0 : (h4 - 0.4) / 0.6 * 0.85'};
+  float blind = ${style.kind === FacadeKind.Shop ? "0.0" : "h4 < 0.4 ? 0.0 : (h4 - 0.4) / 0.6 * 0.85"};
   if (m.y > WIN.w - blind * (WIN.w - WIN.y)) {
     col = mix(vec3(0.78, 0.74, 0.66), vec3(0.86), h1) * (0.8 + 0.2 * step(0.35, fract(m.y * 22.0))) * 0.9;
   }
-  ${style.kind === 0 ? 'col *= mix(0.45, 1.0, smoothstep(0.0, 0.3, WIN.w - m.y)) * mix(0.7, 1.0, smoothstep(0.0, 0.18, m.x - WIN.x));' : ''}
+  ${style.kind === 0 ? "col *= mix(0.45, 1.0, smoothstep(0.0, 0.3, WIN.w - m.y)) * mix(0.7, 1.0, smoothstep(0.0, 0.18, m.x - WIN.x));" : ""}
   float fresnel = pow(1.0 - clamp(d.z, 0.0, 1.0), 5.0);
   s.interior = col * ${glsl(style.interior)} * (1.0 - 0.95 * fresnel) * smoothstep(0.02, 0.25, d.z);
 
@@ -263,26 +397,42 @@ FacadeSample facadeSample() {
   s.trim *= 1.0 - far;
   s.interior = mix(s.interior, vec3(0.5, 0.48, 0.45) * ${glsl(style.interior * 0.55)}, far);
   return s;
-}`)
-      .replace('#include <color_fragment>', `#include <color_fragment>
+}`,
+      )
+      .replace(
+        "#include <color_fragment>",
+        `#include <color_fragment>
 FacadeSample facade = facadeSample();
-vec3 glassTone = ${vec3(style.glassColor)}${style.kind === FacadeKind.Curtain ? ' * vColor.rgb * 1.6' : ''};
+vec3 glassTone = ${vec3(style.glassColor)}${style.kind === FacadeKind.Curtain ? " * vColor.rgb * 1.6" : ""};
 diffuseColor.rgb *= 1.0 - facade.grime * 0.35;
-diffuseColor.rgb = mix(diffuseColor.rgb, ${style.trim === null ? 'vec3(0.0)' : vec3(style.trim)}, facade.trim);
+diffuseColor.rgb = mix(diffuseColor.rgb, ${style.trim === null ? "vec3(0.0)" : vec3(style.trim)}, facade.trim);
 diffuseColor.rgb = mix(diffuseColor.rgb, ${vec3(style.frameColor)}, facade.frame);
-diffuseColor.rgb = mix(diffuseColor.rgb, glassTone, facade.glass);`)
-      .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+diffuseColor.rgb = mix(diffuseColor.rgb, glassTone, facade.glass);`,
+      )
+      .replace(
+        "#include <roughnessmap_fragment>",
+        `#include <roughnessmap_fragment>
 roughnessFactor = mix(roughnessFactor, 0.85, facade.trim);
 roughnessFactor = mix(roughnessFactor, 0.4, facade.frame);
-roughnessFactor = mix(roughnessFactor, 0.03, facade.glass);`)
-      .replace('#include <metalnessmap_fragment>', `#include <metalnessmap_fragment>
+roughnessFactor = mix(roughnessFactor, 0.03, facade.glass);`,
+      )
+      .replace(
+        "#include <metalnessmap_fragment>",
+        `#include <metalnessmap_fragment>
 metalnessFactor = mix(metalnessFactor, 0.0, facade.trim);
 metalnessFactor = mix(metalnessFactor, ${glsl(style.frameMetal)}, facade.frame);
-metalnessFactor = mix(metalnessFactor, ${glsl(style.glassMetal)}, facade.glass);`)
-      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
-normal = normalize(mix(normal, normalize(vNormal) * faceDirection, max(facade.glass, max(facade.frame, facade.trim))));`)
-      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-totalEmissiveRadiance += facade.interior * facade.glass * (1.0 - ${glsl(style.glassMetal * 0.6)});`);
+metalnessFactor = mix(metalnessFactor, ${glsl(style.glassMetal)}, facade.glass);`,
+      )
+      .replace(
+        "#include <normal_fragment_maps>",
+        `#include <normal_fragment_maps>
+normal = normalize(mix(normal, normalize(vNormal) * faceDirection, max(facade.glass, max(facade.frame, facade.trim))));`,
+      )
+      .replace(
+        "#include <emissivemap_fragment>",
+        `#include <emissivemap_fragment>
+totalEmissiveRadiance += facade.interior * facade.glass * (1.0 - ${glsl(style.glassMetal * 0.6)});`,
+      );
   };
   material.customProgramCacheKey = () => `facade-${name}`;
   return material;

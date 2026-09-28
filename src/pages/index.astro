@@ -1,61 +1,149 @@
 ---
-import GameHeader from '../components/GameHeader.astro';
-import { games } from '../lib/games';
-import { sitePath } from '../lib/paths';
+import GameHeader from "../components/GameHeader.astro";
+import { games } from "../lib/games";
+import { sitePath } from "../lib/paths";
 ---
+
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width" />
-  <meta name="description" content="Small browser games made by AI." />
-  <link rel="icon" type="image/svg+xml" href={sitePath('favicon.svg')} />
-  <title>AI Game Gallery</title>
-</head>
-<body>
-<GameHeader home />
-<main>
-  <div class="table-scroll" role="region" aria-label="Games" tabindex="0">
-    <table>
-      <thead><tr><th scope="col"><span class="sr-only">Thumbnail</span></th><th scope="col">Game</th><th scope="col">Model</th><th scope="col">Creation time</th></tr></thead>
-      <tbody>
-        {games.map((game) => <tr>
-          <td class="thumbnail-cell">
-            <a class="thumbnail" href={sitePath(`games/${game.slug}/`)} aria-label={`Play ${game.title}`}>
-              <img src={game.thumbnail} alt="" width="160" height="90" loading="lazy" />
-            </a>
-          </td>
-          <th scope="row">
-            <a href={sitePath(`games/${game.slug}/`)}>{game.title} ↗</a>
-            <p>{game.description}</p>
-          </th>
-          <td>{game.model ?? 'Not recorded'}</td>
-          <td>{game.creationMinutes === null ? 'Not recorded' : `${game.creationTimeApproximate ? 'about ' : ''}${game.creationMinutes} ${game.creationMinutes === 1 ? 'minute' : 'minutes'}`}</td>
-        </tr>)}
-        {games.length === 0 && <tr><td colspan="4">More games coming soon.</td></tr>}
-      </tbody>
-    </table>
-  </div>
-</main>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="description" content="Small browser games made by AI." />
+    <link rel="icon" type="image/svg+xml" href={sitePath("favicon.svg")} />
+    <title>AI Game Gallery</title>
+  </head>
+  <body>
+    <GameHeader home />
+    <main>
+      <div class="table-scroll" role="region" aria-label="Games" tabindex="0">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">
+                <span class="sr-only">Thumbnail</span>
+              </th>
+              <th scope="col">Game</th>
+              <th scope="col">Model</th>
+              <th scope="col">Creation time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {games.map((game) => (
+              <tr>
+                <td class="thumbnail-cell">
+                  <a class="thumbnail" href={sitePath(`games/${game.slug}/`)} aria-label={`Play ${game.title}`}>
+                    <img src={game.thumbnail} alt="" width="160" height="90" loading="lazy" />
+                  </a>
+                </td>
+                <th scope="row">
+                  <a href={sitePath(`games/${game.slug}/`)}>{game.title} ↗</a>
+                  <p>{game.description}</p>
+                </th>
+                <td>{game.model ?? "Not recorded"}</td>
+                <td>
+                  {game.creationMinutes === null
+                    ? "Not recorded"
+                    : `${game.creationTimeApproximate ? "about " : ""}${game.creationMinutes} ${game.creationMinutes === 1 ? "minute" : "minutes"}`}
+                </td>
+              </tr>
+            ))}
+            {games.length === 0 && (
+              <tr>
+                <td colspan="4">More games coming soon.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </body>
 </html>
 <style>
-  html { font-family: system-ui, sans-serif; color: #f2f4fa; background: #101622; color-scheme: dark; }
-  body { margin: 0; }
-  main { max-width: 1032px; margin: auto; padding: 28px 24px 64px; }
-  p { line-height: 1.8; color: #b8c3d6; }
-  .table-scroll { overflow-x: auto; border: 1px solid #354056; border-radius: 12px; }
-  table { width: 100%; border-collapse: collapse; text-align: left; }
-  th, td { padding: 20px; border-top: 1px solid #354056; vertical-align: top; }
-  thead { background: #192334; color: #b8c3d6; font-size: .8rem; }
-  th[scope="row"] { min-width: 220px; font-weight: 400; }
-  th[scope="row"] a { color: #c3edb0; font-weight: 700; text-decoration: none; }
-  th[scope="row"] a:hover { text-decoration: underline; }
-  th p { margin: 8px 0 0; font-size: .9rem; }
-  .thumbnail-cell { width: 160px; }
-  .thumbnail { display: block; }
-  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  .thumbnail img { display: block; width: 160px; height: 90px; object-fit: cover; border-radius: 8px; }
-  td { white-space: nowrap; font-size: .9rem; }
-  a:focus-visible, .table-scroll:focus-visible { outline: 3px solid #ffcf75; outline-offset: 5px; }
+  html {
+    font-family: system-ui, sans-serif;
+    color: #f2f4fa;
+    background: #101622;
+    color-scheme: dark;
+  }
+  body {
+    margin: 0;
+  }
+  main {
+    max-width: 1032px;
+    margin: auto;
+    padding: 28px 24px 64px;
+  }
+  p {
+    line-height: 1.8;
+    color: #b8c3d6;
+  }
+  .table-scroll {
+    overflow-x: auto;
+    border: 1px solid #354056;
+    border-radius: 12px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+  }
+  th,
+  td {
+    padding: 20px;
+    border-top: 1px solid #354056;
+    vertical-align: top;
+  }
+  thead {
+    background: #192334;
+    color: #b8c3d6;
+    font-size: 0.8rem;
+  }
+  th[scope="row"] {
+    min-width: 220px;
+    font-weight: 400;
+  }
+  th[scope="row"] a {
+    color: #c3edb0;
+    font-weight: 700;
+    text-decoration: none;
+  }
+  th[scope="row"] a:hover {
+    text-decoration: underline;
+  }
+  th p {
+    margin: 8px 0 0;
+    font-size: 0.9rem;
+  }
+  .thumbnail-cell {
+    width: 160px;
+  }
+  .thumbnail {
+    display: block;
+  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .thumbnail img {
+    display: block;
+    width: 160px;
+    height: 90px;
+    object-fit: cover;
+    border-radius: 8px;
+  }
+  td {
+    white-space: nowrap;
+    font-size: 0.9rem;
+  }
+  a:focus-visible,
+  .table-scroll:focus-visible {
+    outline: 3px solid #ffcf75;
+    outline-offset: 5px;
+  }
 </style>
