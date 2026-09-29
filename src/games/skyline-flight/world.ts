@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { Sky } from "three/examples/jsm/objects/Sky.js";
-import { mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { mergeGeometries, mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import type { Beacon } from "./city";
 import {
   BAY_WATER,
@@ -708,9 +708,30 @@ export function createWorld(beacons: Beacon[]): World {
       }
     }
   }
+  // A simple saloon: painted body and roof, dark glasshouse, black tyres (vertex colors tint the paint).
+  const carPart = (geometry: THREE.BufferGeometry, shade: number) => {
+    const count = geometry.attributes.position!.count;
+    geometry.setAttribute("color", new THREE.Float32BufferAttribute(new Array(count * 3).fill(shade), 3));
+    return geometry;
+  };
+  const carShape = mergeGeometries([
+    carPart(new THREE.BoxGeometry(1.86, 0.62, 4.4).translate(0, 0.6, 0), 1),
+    carPart(new THREE.BoxGeometry(1.6, 0.52, 2.3).translate(0, 1.16, 0.2), 0.07),
+    carPart(new THREE.BoxGeometry(1.56, 0.06, 1.9).translate(0, 1.44, 0.2), 1),
+    carPart(new THREE.BoxGeometry(1.9, 0.18, 0.2).translate(0, 0.42, -2.2), 0.12),
+    carPart(new THREE.BoxGeometry(1.9, 0.18, 0.2).translate(0, 0.42, 2.2), 0.12),
+    ...[-1, 1].flatMap((x) =>
+      [-1.4, 1.4].map((z) =>
+        carPart(
+          new THREE.CylinderGeometry(0.34, 0.34, 0.24, 12).rotateZ(Math.PI / 2).translate(x * 0.84, 0.34, z),
+          0.03,
+        ),
+      ),
+    ),
+  ])!;
   const carBodies = new THREE.InstancedMesh(
-    track(new THREE.BoxGeometry(1.9, 1.4, 4.4).translate(0, 0.7, 0)),
-    track(new THREE.MeshStandardMaterial({ roughness: 0.3, metalness: 0.6 })),
+    track(carShape),
+    track(new THREE.MeshStandardMaterial({ roughness: 0.3, metalness: 0.6, vertexColors: true })),
     cars.length,
   );
   const paint = ["#e8e6e1", "#1d1f22", "#8d9196", "#7a1f1f", "#1f3350", "#c9c3b4", "#2f3d31"].map(
@@ -725,10 +746,10 @@ export function createWorld(beacons: Beacon[]): World {
     const color = carLights.geometry.attributes.color as THREE.BufferAttribute;
     const size = carLights.geometry.attributes.size as THREE.BufferAttribute;
     cars.forEach((_, i) => {
-      color.setXYZ(i * 2, 3.2, 2.9, 2.4);
-      color.setXYZ(i * 2 + 1, 2.6, 0.12, 0.08);
-      size.setX(i * 2, 2.2);
-      size.setX(i * 2 + 1, 1.6);
+      color.setXYZ(i * 2, 2.2, 2, 1.7);
+      color.setXYZ(i * 2 + 1, 1.8, 0.08, 0.05);
+      size.setX(i * 2, 1.1);
+      size.setX(i * 2 + 1, 0.8);
     });
   }
   track(carLights.geometry);

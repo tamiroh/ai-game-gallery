@@ -53,3 +53,18 @@ export function bridgeAvenues() {
   }
   return avenues;
 }
+
+/** A name for wherever the plane happens to be, for the free flight HUD. */
+export function districtName(x: number, z: number) {
+  if (z > WATERFRONT) return "Harbor Bay";
+  if (overRiver(z)) return "River Gorge";
+  if (inRect(PARK, x, z)) return "Central Park";
+  if (inRect(PLAZA, x, z)) return "Crown Plaza";
+  if (Math.hypot(x + 495, z + 385) < 140) return "Crown Tower";
+  if (x > 170 && x < 270 && z > -640 && z < -460) return "Sky Gate";
+  if (Math.abs(x) > 1700 || z < -1700) return "Outskirts";
+  if (Math.hypot(x - 520, z + 380) < 380) return "Meridian";
+  if (Math.hypot(x + 300, z + 520) < 600) return "Financial District";
+  if (Math.abs(x) < 60 && z > 100) return "Harbor Avenue";
+  return z > 100 ? "Waterfront" : "Midtown";
+}

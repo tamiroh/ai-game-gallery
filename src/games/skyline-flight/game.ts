@@ -8,7 +8,7 @@ import { createAudio, type FlightAudio } from "./audio";
 import { SolidIndex, createCity } from "./city";
 import { COURSE_RADIUS, createCourse, sectionName } from "./course";
 import { createGates } from "./gates";
-import { RIVER, floorAt, overRiver } from "./layout";
+import { PARK, RIVER, WATERFRONT, districtName, floorAt, overRiver } from "./layout";
 import { createAircraft, createTrails, glowTexture } from "./plane";
 import { FOG_COLOR, FOG_DENSITY, SUN_DIRECTION, createWorld } from "./world";
 
@@ -24,7 +24,14 @@ const MISS_PENALTY = 2;
 const BEST_KEY = "skyline-flight-best";
 const QUALITY_KEY = "skyline-flight-quality";
 const INVERT_KEY = "skyline-flight-invert";
+const MODE_KEY = "skyline-flight-mode";
+const FREE_PITCH = 0.85;
+// Free flight keeps within this distance of the city center, and below the ceiling.
+const FREE_RANGE = 3000;
+const FREE_CEILING = 900;
+const CITY_CENTER = new THREE.Vector2(0, -300);
 
+type Mode = "race" | "free";
 type State = "loading" | "ready" | "countdown" | "flying" | "crashed" | "finished" | "paused";
 type Quality = "high" | "low";
 
@@ -79,6 +86,8 @@ function start(root: HTMLElement) {
   const knob = $<HTMLElement>("[data-stick] span");
   const boostButton = $<HTMLButtonElement>("[data-boost]");
   const status = $<HTMLElement>("[data-status]");
+  const modeGroup = $<HTMLElement>("[data-modes]");
+  const modeButtons = [...root.querySelectorAll<HTMLButtonElement>("[data-mode]")];
   const events = new AbortController();
   const signal = events.signal;
 
@@ -118,6 +127,7 @@ function start(root: HTMLElement) {
           : "high";
   let invert = read(INVERT_KEY) === "1";
   let best = Number(read(BEST_KEY)) || 0;
+  let mode: Mode = read(MODE_KEY) === "free" ? "free" : "race";
 
   const course = createCourse();
   let world: ReturnType<typeof createWorld> | null = null;
@@ -234,7 +244,15 @@ function start(root: HTMLElement) {
     calloutTimer = seconds;
   };
 
-  const setPanel = (options: { kicker: string; title: string; text: string; button: string; results?: boolean }) => {
+  const setPanel = (options: {
+    kicker: string;
+    title: string;
+    text: string;
+    button: string;
+    results?: boolean;
+    modes?: boolean;
+  }) => {
+    modeGroup.hidden = options.modes === false;
     kicker.textContent = options.kicker;
     panelTitle.textContent = options.title;
     panelText.textContent = options.text;
@@ -294,11 +312,17 @@ function start(root: HTMLElement) {
     if (state === "loading") return;
     ensureAudio();
     resetFlight();
-    state = "countdown";
-    countdown = 3;
     panel.hidden = true;
     root.classList.add("playing");
     canvas.focus({ preventScroll: true });
+    if (mode === "free") {
+      state = "flying";
+      showCallout("Fly free", 1.4, "good");
+      status.textContent = "Free flight. Go wherever you like.";
+      return;
+    }
+    state = "countdown";
+    countdown = 3;
     showCallout("3", 1);
     audio?.beep();
     status.textContent = "Get ready. Three, two, one.";
@@ -311,6 +335,7 @@ function start(root: HTMLElement) {
     keys.clear();
     audio?.setFlight(false, 0, 0, 0);
     setPanel({
+      modes: false,
       kicker: "Holding pattern",
       title: "Paused",
       text: "The sun will wait. Press Resume, Enter or Escape to continue.",
@@ -536,7 +561,7 @@ function start(root: HTMLElement) {
 
   // Course map: the whole line in plan view, drawn once, with the plane on top.
   let mapBase: HTMLCanvasElement | null = null;
-  const bounds = course.points.reduce(
+  const courseBounds = course.points.reduce(
     (b, p) => ({
       x0: Math.min(b.x0, p.x),
       x1: Math.max(b.x1, p.x),
@@ -545,6 +570,9 @@ function start(root: HTMLElement) {
     }),
     { x0: Infinity, x1: -Infinity, z0: Infinity, z1: -Infinity },
   );
+  // Free flight shows the whole city instead of the course.
+  const cityBounds = { x0: -1500, x1: 1500, z0: -1800, z1: 1100 };
+  let bounds = courseBounds;
   const toMap = (x: number, z: number, size: number) => {
     const span = Math.max(bounds.x1 - bounds.x0, bounds.z1 - bounds.z0) * 1.12;
     const scale = size / span;
@@ -567,17 +595,36 @@ function start(root: HTMLElement) {
       const [, r1] = toMap(0, RIVER.z1, size);
       base.fillStyle = "rgba(90, 150, 170, 0.35)";
       base.fillRect(0, r0, size, r1 - r0);
-      base.strokeStyle = "rgba(255, 255, 255, 0.28)";
-      base.lineWidth = size / 40;
-      base.beginPath();
-      course.points.forEach((p, i) => {
-        const [x, y] = toMap(p.x, p.z, size);
-        if (i % 6 === 0) base[i ? "lineTo" : "moveTo"](x, y);
-      });
-      base.stroke();
+      if (mode === "free") {
+        const [, bay] = toMap(0, WATERFRONT, size);
+        base.fillRect(0, bay, size, size - bay);
+        const [px0, pz0] = toMap(PARK.x0, PARK.z0, size);
+        const [px1, pz1] = toMap(PARK.x1, PARK.z1, size);
+        base.fillStyle = "rgba(120, 170, 80, 0.4)";
+        base.fillRect(px0, pz0, px1 - px0, pz1 - pz0);
+        const [cx, cz] = toMap(-495, -385, size);
+        base.fillStyle = "rgba(255, 207, 117, 0.8)";
+        base.beginPath();
+        base.arc(cx, cz, size / 45, 0, Math.PI * 2);
+        base.fill();
+      }
+      if (mode === "race") {
+        base.strokeStyle = "rgba(255, 255, 255, 0.28)";
+        base.lineWidth = size / 40;
+        base.beginPath();
+        course.points.forEach((p, i) => {
+          const [x, y] = toMap(p.x, p.z, size);
+          if (i % 6 === 0) base[i ? "lineTo" : "moveTo"](x, y);
+        });
+        base.stroke();
+      }
     }
     ctx.clearRect(0, 0, size, size);
     ctx.drawImage(mapBase, 0, 0);
+    if (mode === "race") drawProgress(ctx, size);
+    drawPlane(ctx, size);
+  };
+  const drawProgress = (ctx: CanvasRenderingContext2D, size: number) => {
     ctx.lineCap = ctx.lineJoin = "round";
     ctx.strokeStyle = "#ffcf75";
     ctx.lineWidth = size / 40;
@@ -596,7 +643,12 @@ function start(root: HTMLElement) {
       ctx.arc(fx, fy, size / 28, 0, Math.PI * 2);
       ctx.fill();
     }
-    const [px, py] = toMap(plane.pos.x, plane.pos.z, size);
+  };
+  const drawPlane = (ctx: CanvasRenderingContext2D, size: number) => {
+    // Beyond the map, the marker waits at its edge.
+    const [mx, my] = toMap(plane.pos.x, plane.pos.z, size);
+    const px = THREE.MathUtils.clamp(mx, size * 0.07, size * 0.93),
+      py = THREE.MathUtils.clamp(my, size * 0.07, size * 0.93);
     ctx.save();
     ctx.translate(px, py);
     ctx.rotate(-plane.yaw);
@@ -613,6 +665,40 @@ function start(root: HTMLElement) {
     ctx.stroke();
     ctx.restore();
   };
+
+  // Race the course against the clock, or fly anywhere with no rings and no clock.
+  const TITLES = {
+    race: {
+      kicker: "Golden hour · 4 km course",
+      title: "Skyline Flight",
+      text: "Race a jet through the city at sunset: down Harbor Avenue, under the bridges of the river gorge, through the Sky Gate and around the Crown Plaza towers. Thread the rings and never leave the line.",
+      button: "Take off",
+    },
+    free: {
+      kicker: "Golden hour · no rings, no clock",
+      title: "Free Flight",
+      text: "Just you, the jet and the city at sunset. Skim the rooftops, dive under the river bridges, circle the Crown Tower and go wherever you like.",
+      button: "Take off",
+    },
+  } satisfies Record<Mode, { kicker: string; title: string; text: string; button: string }>;
+  const setMode = (next: Mode) => {
+    if (state !== "ready" && state !== "crashed" && state !== "finished") return;
+    mode = next;
+    write(MODE_KEY, mode);
+    root.classList.toggle("mode-free", mode === "free");
+    for (const button of modeButtons) button.setAttribute("aria-pressed", String(button.dataset.mode === mode));
+    if (gates) gates.group.visible = mode === "race";
+    bounds = mode === "free" ? cityBounds : courseBounds;
+    mapBase = null;
+    lastSection = "";
+    state = "ready";
+    orbit = 0;
+    resetFlight();
+    setPanel(TITLES[mode]);
+    status.textContent = `${TITLES[mode].title} selected. Press Take off.`;
+  };
+  for (const button of modeButtons)
+    button.addEventListener("click", () => setMode(button.dataset.mode === "free" ? "free" : "race"), { signal });
 
   // Main loop.
   const tmp = new THREE.Vector3();
@@ -650,9 +736,23 @@ function start(root: HTMLElement) {
     const boosting = keys.has("Space") || keys.has("ShiftLeft") || keys.has("ShiftRight") || touchBoost;
     plane.roll += (turn * MAX_ROLL - plane.roll) * (1 - Math.exp(-dt * 5));
     plane.yaw -= plane.roll * TURN_RATE * dt;
-    // With the stick centered, the nose settles onto the slope of the course instead of the horizon.
-    const courseSlope = Math.asin(THREE.MathUtils.clamp(course.tangents[pathIndex]!.y, -1, 1));
-    const pitchTarget = climb * MAX_PITCH + (1 - Math.abs(climb)) * courseSlope * 0.9;
+    let pitchTarget: number;
+    if (mode === "free") {
+      pitchTarget = climb * FREE_PITCH;
+      if (plane.pos.y > FREE_CEILING) pitchTarget = Math.min(pitchTarget, -0.15);
+      // Past the edge of the city, gently swing the nose back toward the skyline.
+      const away = Math.hypot(plane.pos.x - CITY_CENTER.x, plane.pos.z - CITY_CENTER.y);
+      if (away > FREE_RANGE) {
+        const home = Math.atan2(-(CITY_CENTER.x - plane.pos.x), -(CITY_CENTER.y - plane.pos.z));
+        const delta = Math.atan2(Math.sin(home - plane.yaw), Math.cos(home - plane.yaw));
+        plane.yaw += delta * Math.min(1, (away - FREE_RANGE) / 400) * dt * 1.2;
+        if (calloutTimer <= 0) showCallout("Turning back to the city", 1.4);
+      }
+    } else {
+      // With the stick centered, the nose settles onto the slope of the course instead of the horizon.
+      const courseSlope = Math.asin(THREE.MathUtils.clamp(course.tangents[pathIndex]!.y, -1, 1));
+      pitchTarget = climb * MAX_PITCH + (1 - Math.abs(climb)) * courseSlope * 0.9;
+    }
     plane.pitch += (pitchTarget - plane.pitch) * (1 - Math.exp(-dt * 3.2));
     plane.boost += ((boosting ? 1 : 0) - plane.boost) * (1 - Math.exp(-dt * 3));
     const targetSpeed = boosting ? BOOST_SPEED : BASE_SPEED;
@@ -696,7 +796,11 @@ function start(root: HTMLElement) {
       }
       nextGate++;
     }
+    if (offCourse > OFF_COURSE_LIMIT) fail("offcourse");
+  };
 
+  const collide = (dt: number) => {
+    if (!solids) return;
     // Collisions: the ground or water, the river walls and every solid in the city.
     const floor = floorAt(plane.pos.z);
     const riverWall =
@@ -715,7 +819,6 @@ function start(root: HTMLElement) {
       audio?.closeCall();
       showCallout("Close call!", 0.9, "good");
     }
-    if (offCourse > OFF_COURSE_LIMIT) fail("offcourse");
   };
 
   const updateCamera = (dt: number) => {
@@ -792,7 +895,7 @@ function start(root: HTMLElement) {
 
   const updatePointer = () => {
     const gate = gates?.gates[nextGate];
-    if (!gate || (state !== "flying" && state !== "countdown")) {
+    if (!gate || mode === "free" || (state !== "flying" && state !== "countdown")) {
       pointer.hidden = true;
       return;
     }
@@ -823,7 +926,7 @@ function start(root: HTMLElement) {
     gatesLabel.textContent = `${hits} / ${total} gates`;
     speedLabel.textContent = `${Math.round(plane.speed * 3.6)}`;
     altitudeLabel.textContent = `${Math.round(plane.pos.y - floorAt(plane.pos.z))}`;
-    const section = sectionName(course.points[pathIndex]!);
+    const section = mode === "free" ? districtName(plane.pos.x, plane.pos.z) : sectionName(course.points[pathIndex]!);
     if (section !== lastSection) {
       lastSection = section;
       sectionLabel.textContent = section;
@@ -868,7 +971,8 @@ function start(root: HTMLElement) {
       case "flying":
         elapsed += dt;
         fly(dt);
-        checkCourse(dt);
+        if (mode === "race") checkCourse(dt);
+        if (state === "flying") collide(dt);
         if (offCourse > 0.3 && state === "flying") {
           warnBeep -= dt;
           if (warnBeep <= 0) {
@@ -906,6 +1010,13 @@ function start(root: HTMLElement) {
             text: "Each missed gate adds two seconds. Boost on the straights and stay tight through the turns.",
             button: "Fly again",
             results: true,
+          });
+        } else if (mode === "free") {
+          setPanel({
+            kicker: "Crashed",
+            title: "Too close",
+            text: "The city is still there. Take off again from the harbor and keep a little more air under your wings.",
+            button: "Take off again",
           });
         } else {
           const percent = Math.round((progressS / gates.finish.s) * 100);
@@ -1041,13 +1152,8 @@ function start(root: HTMLElement) {
     state = "ready";
     root.classList.add("ready");
     startButton.disabled = false;
-    setPanel({
-      kicker: "Golden hour · 4 km course",
-      title: "Skyline Flight",
-      text: "Race a jet through the city at sunset: down Harbor Avenue, under the bridges of the river gorge, through the Sky Gate and around the Crown Plaza towers. Thread the rings and never leave the line.",
-      button: "Take off",
-    });
-    status.textContent = "The city is ready. Press Take off.";
+    for (const button of modeButtons) button.disabled = false;
+    setMode(mode);
   };
   build().catch((error: unknown) => {
     console.error(error);
