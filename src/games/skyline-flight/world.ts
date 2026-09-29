@@ -159,6 +159,14 @@ const GROUND_SURFACE = /* glsl */ `
     base = concrete * mix(0.82, 1.0, mix(1.0, joint, detail));
   }
 
+  // Curbs and gutters along the edge of every roadway.
+  if (!inZone(uPark, p) && !inZone(uPlaza, p)) {
+    float curb = max(roadZ ? 0.0 : band(dist.x - ${ROAD_HALF.toFixed(1)}, 0.16, aa.x), roadX ? 0.0 : band(dist.y - ${ROAD_HALF.toFixed(1)}, 0.16, aa.y));
+    float gutter = max(roadZ ? 0.0 : band(dist.x - ${ROAD_HALF.toFixed(1)} + 0.5, 0.32, aa.x), roadX ? 0.0 : band(dist.y - ${ROAD_HALF.toFixed(1)} + 0.5, 0.32, aa.y));
+    base = mix(base, base * 0.62, gutter * detail);
+    base = mix(base, vec3(0.56, 0.54, 0.5), curb * detail);
+  }
+
   // Warm pools under the street lamps that line every sidewalk.
   if ((streetX || streetZ) && !inZone(uPark, p) && !inZone(uPlaza, p)) {
     float glow = 0.0;
@@ -394,7 +402,15 @@ export function createWorld(beacons: Beacon[]): World {
   const archGeometry = track(new THREE.TubeGeometry(archCurve, 40, 0.75, 8));
   const hangerGeometry = track(new THREE.CylinderGeometry(0.09, 0.09, 1, 5).translate(0, 0.5, 0));
   const zc = (RIVER.z0 + RIVER.z1) / 2;
+  const railGeometry = track(new THREE.BoxGeometry(0.18, 1.1, span).translate(0, 0.55, 0));
+  const bridgeLamps: number[] = [];
   for (const x of bridgeAvenues()) {
+    for (const side of [-1, 1]) {
+      const rail = new THREE.Mesh(railGeometry, steelMaterial);
+      rail.position.set(x + side * 12.8, 0, zc);
+      group.add(rail);
+      for (let z = RIVER.z0 + 4; z < RIVER.z1; z += 20) bridgeLamps.push(x + side * 12.4, 8, z);
+    }
     const deck = new THREE.Mesh(deckGeometry, deckMaterial);
     deck.position.set(x, -1.1, zc);
     deck.castShadow = deck.receiveShadow = true;
@@ -453,8 +469,53 @@ export function createWorld(beacons: Beacon[]): World {
       }
     }
   }
+  lampSpots.push(...bridgeLamps);
   const lampCount = lampSpots.length / 3;
-  const glowCount = lampCount + beacons.length;
+
+  // Traffic signals on two corners of every intersection near the middle of the city.
+  const signals: { x: number; z: number; along: 0 | 1 }[] = [];
+  const SIGNAL_REACH = 1000;
+  for (let i = Math.ceil(-SIGNAL_REACH / PITCH); i * PITCH <= SIGNAL_REACH; i++) {
+    for (let j = Math.ceil(-SIGNAL_REACH / PITCH); j * PITCH < WATERFRONT; j++) {
+      const x = i * PITCH,
+        z = j * PITCH;
+      if (inRect(PARK, x, z, 20) || inRect(PLAZA, x, z, 20)) continue;
+      signals.push({ x: x + 17, z: z + 17, along: 0 }, { x: x - 17, z: z - 17, along: 1 });
+    }
+  }
+  const signalMaterial = track(new THREE.MeshStandardMaterial({ color: 0x25282b, roughness: 0.45, metalness: 0.6 }));
+  const signalPoles = new THREE.InstancedMesh(
+    track(new THREE.CylinderGeometry(0.14, 0.18, 6.6, 6).translate(0, 3.3, 0)),
+    signalMaterial,
+    signals.length,
+  );
+  const signalArms = new THREE.InstancedMesh(track(new THREE.BoxGeometry(1, 1, 1)), signalMaterial, signals.length * 2);
+  const unit = new THREE.Quaternion();
+  signals.forEach((sg, i) => {
+    const dx = sg.along === 0 ? -1 : 0,
+      dz = sg.along === 1 ? 1 : 0;
+    signalPoles.setMatrixAt(i, new THREE.Matrix4().makeTranslation(sg.x, 0, sg.z));
+    signalArms.setMatrixAt(
+      i * 2,
+      new THREE.Matrix4().compose(
+        new THREE.Vector3(sg.x + dx * 3.6, 6.3, sg.z + dz * 3.6),
+        unit,
+        new THREE.Vector3(dx ? 7.2 : 0.18, 0.18, dz ? 7.2 : 0.18),
+      ),
+    );
+    signalArms.setMatrixAt(
+      i * 2 + 1,
+      new THREE.Matrix4().compose(
+        new THREE.Vector3(sg.x + dx * 6.8, 5.6, sg.z + dz * 6.8),
+        unit,
+        new THREE.Vector3(0.45, 1.2, 0.45),
+      ),
+    );
+  });
+  signalPoles.castShadow = signalArms.castShadow = true;
+  group.add(signalPoles, signalArms);
+
+  const glowCount = lampCount + beacons.length + signals.length;
   const lamps = glowPoints(glowCount, glow);
   {
     const position = lamps.geometry.attributes.position as THREE.BufferAttribute;
@@ -472,6 +533,13 @@ export function createWorld(beacons: Beacon[]): World {
       color.setXYZ(i, 6, 0.35, 0.2);
       size.setX(i, 4.5);
       phase.setX(i, b.phase);
+    });
+    signals.forEach((sg, k) => {
+      const i = lampCount + beacons.length + k;
+      position.setXYZ(i, sg.x + (sg.along === 0 ? -6.8 : 0), 5.4, sg.z + (sg.along === 1 ? 6.8 : 0));
+      if (sg.along === 0) color.setXYZ(i, 4, 0.25, 0.12);
+      else color.setXYZ(i, 0.25, 3.4, 1.3);
+      size.setX(i, 1.3);
     });
   }
   track(lamps.geometry);
@@ -493,6 +561,39 @@ export function createWorld(beacons: Beacon[]): World {
   posts.forEach((p, i) => postMesh.setMatrixAt(i, matrix.makeTranslation(p.x, 0, p.z)));
   group.add(postMesh);
 
+  // A fountain at the heart of Crown Plaza.
+  {
+    const stone = track(new THREE.MeshStandardMaterial({ color: 0xb9b1a4, roughness: 0.7 }));
+    const add = (geometry: THREE.BufferGeometry, material: THREE.Material, y: number) => {
+      const mesh = new THREE.Mesh(track(geometry), material);
+      mesh.position.set(-330, y, -550);
+      mesh.castShadow = mesh.receiveShadow = true;
+      group.add(mesh);
+    };
+    add(new THREE.CylinderGeometry(22.5, 23, 0.9, 72).translate(0, 0.45, 0), stone, 0);
+    add(new THREE.CylinderGeometry(21.6, 21.6, 0.1, 72), water, 0.78);
+    add(new THREE.CylinderGeometry(4.2, 4.6, 1.4, 40).translate(0, 0.7, 0), stone, 0.8);
+    add(new THREE.CylinderGeometry(1.2, 1.6, 3.4, 24).translate(0, 1.7, 0), stone, 2.2);
+    add(new THREE.CylinderGeometry(3, 2.4, 0.4, 32), stone, 5.6);
+    const spray = track(
+      new THREE.MeshBasicMaterial({
+        color: new THREE.Color(1.2, 1.25, 1.3),
+        transparent: true,
+        opacity: 0.32,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      }),
+    );
+    add(new THREE.ConeGeometry(0.8, 9, 18, 1, true).translate(0, 4.5, 0), spray, 5.8);
+    for (let k = 0; k < 16; k++) {
+      const angle = (k / 16) * Math.PI * 2;
+      const jet = new THREE.Mesh(track(new THREE.ConeGeometry(0.28, 3.6, 10, 1, true).translate(0, 1.8, 0)), spray);
+      jet.position.set(-330 + Math.cos(angle) * 12, 0.8, -550 + Math.sin(angle) * 12);
+      jet.rotation.set(Math.sin(angle) * 0.35, 0, -Math.cos(angle) * 0.35);
+      group.add(jet);
+    }
+  }
+
   // Trees in the park and around the plaza.
   const trees: THREE.Vector3[] = [];
   for (let n = 0; n < 900 && trees.length < 420; n++) {
@@ -506,11 +607,34 @@ export function createWorld(beacons: Beacon[]): World {
     const angle = (n / 60) * Math.PI * 2;
     trees.push(new THREE.Vector3(-330 + Math.cos(angle) * 72, 0, -550 + Math.sin(angle) * 72));
   }
-  // Lumpy, smooth-shaded canopies: weld the icosphere so neighbouring faces share the jittered vertices.
-  const canopyGeometry = track(
-    mergeVertices(new THREE.IcosahedronGeometry(1, 2).deleteAttribute("normal").deleteAttribute("uv")),
+  // Street trees line the sidewalks between the lamps, leaving the corners clear.
+  const streetTrees: THREE.Vector3[] = [];
+  const TREE_REACH = 1150;
+  for (let a = -TREE_REACH + 17.5; a <= TREE_REACH; a += 35) {
+    for (let k = Math.ceil(-TREE_REACH / PITCH); k * PITCH <= TREE_REACH; k++) {
+      const corner = Math.abs(a - PITCH * Math.round(a / PITCH)) < 26;
+      if (corner) continue;
+      for (const side of [-18, 18]) {
+        for (const [x, z] of [
+          [k * PITCH + side, a],
+          [a, k * PITCH + side],
+        ] as const) {
+          if (overRiver(z) || z > WATERFRONT - 4 || inRect(PARK, x, z, 4) || inRect(PLAZA, x, z, 4)) continue;
+          if (rand() < 0.72) streetTrees.push(new THREE.Vector3(x, 0, z));
+        }
+      }
+    }
+  }
+
+  const leaf = ["#3f5a22", "#4e6b2a", "#5b7430", "#6b7a2e", "#374f20", "#7a7a2c", "#8a6a28"].map(
+    (c) => new THREE.Color(c),
   );
-  {
+  const q = new THREE.Quaternion();
+  const forest = (spots: THREE.Vector3[], detail: number, size: number, spread: number) => {
+    // Lumpy, smooth-shaded canopies: weld the icosphere so neighbouring faces share the displaced vertices.
+    const canopyGeometry = track(
+      mergeVertices(new THREE.IcosahedronGeometry(1, detail).deleteAttribute("normal").deleteAttribute("uv")),
+    );
     const pos = canopyGeometry.attributes.position!;
     const p = new THREE.Vector3();
     for (let i = 0; i < pos.count; i++) {
@@ -519,32 +643,37 @@ export function createWorld(beacons: Beacon[]): World {
       pos.setXYZ(i, p.x * lump, p.y * lump * 0.9, p.z * lump);
     }
     canopyGeometry.computeVertexNormals();
-  }
-  const canopies = new THREE.InstancedMesh(
-    canopyGeometry,
-    track(new THREE.MeshStandardMaterial({ roughness: 0.95 })),
-    trees.length,
-  );
-  const trunks = new THREE.InstancedMesh(
-    track(new THREE.CylinderGeometry(0.25, 0.35, 1, 5).translate(0, 0.5, 0)),
-    track(new THREE.MeshStandardMaterial({ color: 0x3d2c20, roughness: 1 })),
-    trees.length,
-  );
-  const leaf = ["#3f5a22", "#4e6b2a", "#5b7430", "#6b7a2e", "#374f20"].map((c) => new THREE.Color(c));
-  const q = new THREE.Quaternion();
-  trees.forEach((t, i) => {
-    const s = 3.2 + rand() * 2.4;
-    const trunk = 2.2 + rand() * 1.5;
-    trunks.setMatrixAt(i, matrix.compose(t, q, new THREE.Vector3(1, trunk + s * 0.5, 1)));
-    canopies.setMatrixAt(
-      i,
-      matrix.compose(new THREE.Vector3(t.x, trunk + s * 0.85, t.z), q, new THREE.Vector3(s, s * 1.1, s)),
+    const canopies = new THREE.InstancedMesh(
+      canopyGeometry,
+      track(new THREE.MeshStandardMaterial({ roughness: 0.95 })),
+      spots.length,
     );
-    canopies.setColorAt(i, leaf[i % leaf.length]!);
-  });
-  canopies.castShadow = trunks.castShadow = true;
-  canopies.receiveShadow = true;
-  group.add(canopies, trunks);
+    const trunks = new THREE.InstancedMesh(
+      track(new THREE.CylinderGeometry(0.2, 0.32, 1, 5).translate(0, 0.5, 0)),
+      track(new THREE.MeshStandardMaterial({ color: 0x3d2c20, roughness: 1 })),
+      spots.length,
+    );
+    spots.forEach((t, i) => {
+      const s = size + rand() * spread;
+      const trunk = 2.2 + rand() * 1.5;
+      trunks.setMatrixAt(i, matrix.compose(t, q, new THREE.Vector3(s / 4, trunk + s * 0.5, s / 4)));
+      canopies.setMatrixAt(
+        i,
+        matrix.compose(
+          new THREE.Vector3(t.x, trunk + s * 0.85, t.z),
+          q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rand() * Math.PI * 2),
+          new THREE.Vector3(s, s * (1 + rand() * 0.25), s * (0.85 + rand() * 0.3)),
+        ),
+      );
+      q.identity();
+      canopies.setColorAt(i, leaf[Math.floor(rand() * leaf.length)]!);
+    });
+    canopies.castShadow = trunks.castShadow = true;
+    canopies.receiveShadow = true;
+    group.add(canopies, trunks);
+    return [canopies, trunks];
+  };
+  const treeMeshes = [...forest(trees, 2, 3.2, 2.4), ...forest(streetTrees, 1, 2.2, 1)];
 
   // Traffic: cars loop along the avenues and streets near the course with head and tail lights.
   interface Car {
@@ -717,7 +846,7 @@ export function createWorld(beacons: Beacon[]): World {
     },
     dispose() {
       for (const item of disposables) item.dispose();
-      for (const mesh of [postMesh, canopies, trunks, carBodies, hulls]) mesh.dispose();
+      for (const mesh of [postMesh, signalPoles, signalArms, ...treeMeshes, carBodies, hulls]) mesh.dispose();
     },
   };
 }

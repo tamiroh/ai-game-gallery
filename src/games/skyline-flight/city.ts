@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { CROWN_TOWER, SLALOM_TOWERS, type Course } from "./course";
+import { Style, facadeMaterial } from "./facade";
 import { BLOCK_HALF, CITY, PARK, PITCH, PLAZA, SETBACK, WATERFRONT, inRect, mulberry32, overRiver } from "./layout";
 
 export interface Box {
@@ -9,21 +10,36 @@ export interface Box {
   maxX: number;
   maxY: number;
   maxZ: number;
+  /** Round and octagonal shells collide as vertical cylinders of this radius. */
+  radius?: number;
 }
 
-const enum Style {
-  Glass = 0,
-  Grid = 1,
-  Stone = 2,
-  Ribbon = 3,
+const enum Shape {
+  Box = 0,
+  Octagon = 1,
+  Round = 2,
 }
 
-interface Building extends Box {
+type Massing = "box" | "cross" | "octagon" | "round";
+
+interface Look {
   style: Style;
   tint: THREE.Color;
   seed: number;
   lit: number;
   glass: number;
+}
+
+interface Part extends Box, Look {
+  shape: Shape;
+}
+
+interface Tank {
+  x: number;
+  z: number;
+  r: number;
+  y: number;
+  h: number;
 }
 
 export interface Beacon {
@@ -38,6 +54,8 @@ const PALETTES: Record<Style, string[]> = {
   [Style.Grid]: ["#b8b0a2", "#d2cbbd", "#8f8a82", "#a89c8a", "#c4bfb6"],
   [Style.Stone]: ["#b98f6e", "#8e5a45", "#c8b89a", "#9c8f84", "#a4735a"],
   [Style.Ribbon]: ["#dcd8d0", "#e8e4dc", "#7b8288", "#b0a89a"],
+  [Style.Balcony]: ["#e6e1d8", "#d4c7b4", "#c9ccc8", "#b7a58e"],
+  [Style.Trim]: ["#d8d2c6", "#c9c1b2", "#8e9296"],
 };
 
 const overlaps = (a: Box, b: Box, pad = 0) =>
@@ -47,137 +65,6 @@ const overlaps = (a: Box, b: Box, pad = 0) =>
   a.maxZ > b.minZ - pad &&
   a.minY < b.maxY &&
   a.maxY > b.minY;
-
-const BUILDING_VERTEX = /* glsl */ `
-attribute vec4 aStyle;
-attribute vec3 aTint;
-varying vec3 vBPos;
-varying vec3 vBNormal;
-varying vec4 vBStyle;
-varying vec3 vBTint;
-varying vec3 vBSize;
-varying float vBBase;
-`;
-
-const BUILDING_FRAGMENT = /* glsl */ `
-uniform float uWindowGlow;
-varying vec3 vBPos;
-varying vec3 vBNormal;
-varying vec4 vBStyle;
-varying vec3 vBTint;
-varying vec3 vBSize;
-varying float vBBase;
-
-float bHash(vec2 p) {
-  vec3 p3 = fract(vec3(p.xyx) * 0.1031);
-  p3 += dot(p3, p3.yzx + 33.33);
-  return fract((p3.x + p3.y) * p3.z);
-}
-
-vec3 glassTint(float h) {
-  if (h < 0.25) return vec3(0.09, 0.15, 0.17);
-  if (h < 0.5) return vec3(0.08, 0.11, 0.18);
-  if (h < 0.75) return vec3(0.17, 0.13, 0.09);
-  return vec3(0.12, 0.13, 0.14);
-}
-`;
-
-const BUILDING_SURFACE = /* glsl */ `
-{
-  vec3 bn = normalize(vBNormal);
-  float seed = vBStyle.x;
-  float style = vBStyle.y;
-  float litRatio = vBStyle.z;
-  vec3 glass = glassTint(vBStyle.w);
-  float localY = vBPos.y - vBBase;
-  float ao = mix(0.4, 1.0, smoothstep(-4.0, 42.0, vBPos.y));
-  vec3 emit = vec3(0.0);
-  if (abs(bn.y) > 0.5) {
-    float grit = bHash(floor(vBPos.xz * 1.5));
-    diffuseColor.rgb = vBTint * (bn.y > 0.0 ? 0.42 : 0.28) * (0.88 + 0.24 * grit);
-    roughnessFactor = 0.92;
-    metalnessFactor = 0.0;
-  } else {
-    float u = (abs(bn.x) > 0.5 ? vBPos.z : vBPos.x) + seed * 53.0;
-    vec2 cellSize = vec2(3.4, 3.3);
-    vec2 win = vec2(0.42, 0.55);
-    float sill = 0.25;
-    if (style < 0.5) { cellSize = vec2(1.6, 3.9); win = vec2(0.92, 0.74); sill = 0.16; }
-    else if (style < 1.5) { cellSize = vec2(3.0, 3.9); win = vec2(0.6, 0.56); sill = 0.24; }
-    else if (style > 2.5) { cellSize = vec2(1.8, 3.7); win = vec2(0.97, 0.48); sill = 0.3; }
-    vec2 c = vec2(u, localY) / cellSize;
-    vec2 id = floor(c);
-    vec2 f = fract(c);
-    vec2 fw = max(fwidth(c), vec2(1e-4));
-    float x0 = 0.5 - win.x * 0.5;
-    float x1 = 0.5 + win.x * 0.5;
-    float mx = smoothstep(x0 - fw.x, x0 + fw.x, f.x) - smoothstep(x1 - fw.x, x1 + fw.x, f.x);
-    float my = smoothstep(sill - fw.y, sill + fw.y, f.y) - smoothstep(sill + win.y - fw.y, sill + win.y + fw.y, f.y);
-    float detail = 1.0 - smoothstep(0.2, 0.6, max(fw.x, fw.y));
-    float mask = mix(win.x * win.y, mx * my, detail);
-    float parapet = step(vBSize.y - 1.3, localY);
-    float mech = style < 1.5 && vBSize.y > 90.0 ? step(15.0, mod(id.y, 16.0)) : 0.0;
-    mask *= (1.0 - parapet) * (1.0 - mech);
-
-    float h1 = bHash(id + seed * vec2(17.13, 5.71));
-    float h2 = bHash(id.yx * 1.37 + seed * 3.1);
-    float floorLit = bHash(vec2(id.y * 0.37, seed * 91.7));
-    float isLit = step(h1, litRatio * (0.35 + 1.3 * floorLit * floorLit));
-    vec3 warm = mix(vec3(1.0, 0.56, 0.24), vec3(1.0, 0.8, 0.52), h2);
-    vec3 lamp = mix(warm, vec3(0.74, 0.85, 1.0), step(0.84, h2)) * (0.4 + 0.9 * fract(h1 * 13.7));
-    vec3 room = lamp * isLit * (0.6 + 0.4 * smoothstep(0.1, 0.95, f.y));
-    room = mix(litRatio * vec3(0.9, 0.62, 0.34) * 0.75, room, detail);
-
-    if (vBBase < 0.5 && localY < 5.6) {
-      float bay = fract(u / 6.0);
-      float shop = smoothstep(0.05, 0.08, bay) * (1.0 - smoothstep(0.92, 0.95, bay));
-      mask = shop * step(0.35, localY) * (1.0 - step(4.7, localY));
-      room = mix(vec3(1.0, 0.66, 0.36), vec3(1.0, 0.84, 0.62), bHash(vec2(floor(u / 6.0), seed))) * 0.9;
-    }
-
-    if (style > 1.5 && style < 2.5) {
-      vec2 brick = floor(vec2(u * 2.2, localY * 4.2));
-      diffuseColor.rgb = vBTint * (0.86 + 0.24 * bHash(brick + seed));
-    } else {
-      diffuseColor.rgb = vBTint;
-    }
-    float panel = bHash(id * 0.71 + seed);
-    diffuseColor.rgb = mix(diffuseColor.rgb * ao, glass, mask);
-    roughnessFactor = mix(style < 0.5 ? 0.42 : 0.8, 0.12 + 0.12 * panel, mask);
-    metalnessFactor = mix(style < 0.5 ? 0.55 : 0.0, 0.7, mask);
-    emit = room * mask * uWindowGlow;
-
-    vec3 across = abs(bn.x) > 0.5 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
-    vec3 wobble = (across * (panel - 0.5) + vec3(0.0, fract(panel * 7.3) - 0.5, 0.0)) * 0.06 * mask * detail;
-    normal = normalize(normal + (viewMatrix * vec4(wobble, 0.0)).xyz);
-  }
-  totalEmissiveRadiance += emit;
-}
-`;
-
-function buildingMaterial(glow: { value: number }) {
-  const material = new THREE.MeshStandardMaterial({ roughness: 0.8, metalness: 0 });
-  material.onBeforeCompile = (shader) => {
-    shader.uniforms.uWindowGlow = glow;
-    shader.vertexShader = shader.vertexShader
-      .replace("#include <common>", `#include <common>\n${BUILDING_VERTEX}`)
-      .replace(
-        "#include <begin_vertex>",
-        `#include <begin_vertex>
-        vBPos = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).xyz;
-        vBNormal = normal;
-        vBStyle = aStyle;
-        vBTint = aTint;
-        vBSize = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));
-        vBBase = (modelMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).y;`,
-      );
-    shader.fragmentShader = shader.fragmentShader
-      .replace("#include <common>", `#include <common>\n${BUILDING_FRAGMENT}`)
-      .replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>\n${BUILDING_SURFACE}`);
-  };
-  material.customProgramCacheKey = () => "skyline-building";
-  return material;
-}
 
 /** Everything the flight model and scene need from the generated city. */
 export interface City {
@@ -190,9 +77,11 @@ export interface City {
 
 export function createCity(course: Course): City {
   const rand = mulberry32(20260928);
-  const buildings: Building[] = [];
-  const specials: Building[] = [];
-  const roofUnits: Box[] = [];
+  const parts: Part[] = [];
+  const specials: Part[] = [];
+  const units: Box[] = [];
+  const tanks: Tank[] = [];
+  const pyramids: Box[] = [];
   const beacons: Beacon[] = [];
 
   // Course samples every few meters, used to keep buildings out of the flight line.
@@ -218,8 +107,7 @@ export function createCity(course: Course): City {
   };
 
   const pick = <T>(list: T[]) => list[Math.floor(rand() * list.length)]!;
-  const make = (box: Box, style: Style, options: Partial<Building> = {}): Building => ({
-    ...box,
+  const look = (style: Style, options: Partial<Look> = {}): Look => ({
     style,
     tint: new THREE.Color(pick(PALETTES[style])),
     seed: rand(),
@@ -227,22 +115,135 @@ export function createCity(course: Course): City {
     glass: rand(),
     ...options,
   });
+  const trimLook = (of: Look): Look => ({
+    ...of,
+    style: Style.Trim,
+    tint: of.style === Style.Glass ? of.tint.clone().multiplyScalar(0.9) : new THREE.Color(pick(PALETTES[Style.Trim])),
+  });
   const chooseStyle = (height: number): Style => {
     const r = rand();
-    if (height > 120) return r < 0.58 ? Style.Glass : r < 0.84 ? Style.Ribbon : Style.Grid;
-    if (height > 50) return r < 0.22 ? Style.Glass : r < 0.6 ? Style.Grid : r < 0.8 ? Style.Ribbon : Style.Stone;
-    return r < 0.55 ? Style.Stone : r < 0.88 ? Style.Grid : Style.Ribbon;
+    if (height > 120) return r < 0.55 ? Style.Glass : r < 0.8 ? Style.Ribbon : r < 0.92 ? Style.Grid : Style.Balcony;
+    if (height > 50) {
+      if (r < 0.2) return Style.Glass;
+      if (r < 0.48) return Style.Grid;
+      if (r < 0.64) return Style.Ribbon;
+      return r < 0.84 ? Style.Balcony : Style.Stone;
+    }
+    return r < 0.55 ? Style.Stone : r < 0.8 ? Style.Grid : r < 0.92 ? Style.Balcony : Style.Ribbon;
   };
 
-  /** Stacks setback tiers, a crown and rooftop plant onto a footprint. */
-  const tower = (x: number, z: number, w: number, d: number, height: number, style: Style, into: Building[]) => {
-    const base = make(
-      { minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2, minY: 0, maxY: height },
-      style,
-    );
+  const shell = (
+    into: Part[],
+    shape: Shape,
+    x: number,
+    z: number,
+    w: number,
+    d: number,
+    y0: number,
+    y1: number,
+    of: Look,
+  ) => {
+    const part: Part = {
+      minX: x - w / 2,
+      maxX: x + w / 2,
+      minZ: z - d / 2,
+      maxZ: z + d / 2,
+      minY: y0,
+      maxY: y1,
+      shape,
+      ...of,
+    };
+    if (shape !== Shape.Box) part.radius = (w / 2) * (shape === Shape.Round ? 1 : 0.96);
+    into.push(part);
+  };
+
+  /** One stretch of the building's plan: a plain box, a notched cross, an octagon or a cylinder. */
+  const massingBand = (
+    into: Part[],
+    massing: Massing,
+    x: number,
+    z: number,
+    w: number,
+    d: number,
+    y0: number,
+    y1: number,
+    of: Look,
+    notch: number,
+  ) => {
+    if (massing === "octagon" || massing === "round") {
+      const size = Math.min(w, d);
+      shell(into, massing === "round" ? Shape.Round : Shape.Octagon, x, z, size, size, y0, y1, of);
+    } else if (massing === "cross") {
+      shell(into, Shape.Box, x, z, w, d * (1 - 2 * notch), y0, y1, of);
+      // Slightly lower so the two roofs never share a plane.
+      shell(into, Shape.Box, x, z, w * (1 - 2 * notch), d, y0, y1 - 0.45, of);
+    } else {
+      shell(into, Shape.Box, x, z, w, d, y0, y1, of);
+    }
+  };
+
+  /** A protruding band just under an edge: cornices, tier ledges and string courses. */
+  const band = (
+    into: Part[],
+    massing: Massing,
+    x: number,
+    z: number,
+    w: number,
+    d: number,
+    y: number,
+    thickness: number,
+    reach: number,
+    of: Look,
+    notch: number,
+  ) => massingBand(into, massing, x, z, w + reach * 2, d + reach * 2, y - thickness, y, trimLook(of), notch);
+
+  const waterTank = (x: number, z: number, roof: number) => {
+    const r = 1.6 + rand() * 1.1;
+    const legs = 2.2 + rand() * 1.5;
+    for (const [dx, dz] of [
+      [-0.6, -0.6],
+      [0.6, -0.6],
+      [0.6, 0.6],
+      [-0.6, 0.6],
+    ]) {
+      const lx = x + dx! * r,
+        lz = z + dz! * r;
+      units.push({ minX: lx - 0.12, maxX: lx + 0.12, minZ: lz - 0.12, maxZ: lz + 0.12, minY: roof, maxY: roof + legs });
+    }
+    tanks.push({ x, z, r, y: roof + legs, h: r * 1.8 });
+  };
+
+  const mast = (x: number, z: number, y: number, height: number) => {
+    units.push({ minX: x - 0.25, maxX: x + 0.25, minZ: z - 0.25, maxZ: z + 0.25, minY: y, maxY: y + height });
+    beacons.push({ x, y: y + height + 0.5, z, phase: rand() });
+  };
+
+  /** Stacks tiers, ledges, a crown and rooftop plant onto a footprint. */
+  const building = (
+    into: Part[],
+    x: number,
+    z: number,
+    w: number,
+    d: number,
+    height: number,
+    of: Look,
+    options: { limit?: number; massing?: Massing; tiers?: boolean } = {},
+  ) => {
+    const limit = options.limit ?? Infinity;
+    const r = rand();
+    const massing: Massing =
+      options.massing ??
+      (height > 100 && of.style === Style.Glass && r < 0.16
+        ? "round"
+        : height > 90 && r < 0.3
+          ? "octagon"
+          : w > 22 && d > 22 && r < 0.55
+            ? "cross"
+            : "box");
+    const notch = 0.1 + rand() * 0.1;
     // Each tier is [top as a fraction of the height, footprint scale].
     const tiers: number[][] =
-      height > 95 && rand() < 0.7
+      options.tiers !== false && height > 95 && rand() < 0.7
         ? [
             [0.6 + rand() * 0.12, 1],
             [0.86 + rand() * 0.05, 0.76 + rand() * 0.08],
@@ -250,102 +251,134 @@ export function createCity(course: Course): City {
           ]
         : [[1, 1]];
     let floor = 0;
-    for (const [top, scale] of tiers) {
-      const tw = w * scale!,
-        td = d * scale!;
-      into.push({
-        ...base,
-        minX: x - tw / 2,
-        maxX: x + tw / 2,
-        minZ: z - td / 2,
-        maxZ: z + td / 2,
-        minY: floor,
-        maxY: height * top!,
-      });
-      floor = height * top!;
+    let topW = w,
+      topD = d;
+    tiers.forEach(([top, scale], i) => {
+      topW = w * scale!;
+      topD = d * scale!;
+      const y1 = height * top!;
+      massingBand(into, massing, x, z, topW, topD, floor, y1, of, notch);
+      // A ledge where each setback begins.
+      if (i < tiers.length - 1) band(into, massing, x, z, topW, topD, y1 - 0.2, 0.9, 0.5, of, notch);
+      floor = y1;
+    });
+
+    // Masonry gets a cornice and a string course above the shops; everything else a slim coping band.
+    if (of.style === Style.Stone || (of.style === Style.Grid && height < 70)) {
+      band(into, massing, x, z, topW, topD, height - 0.35, 1.3, 0.75, of, notch);
+      if (height > 14) band(into, massing, x, z, w, d, 6.6, 0.45, 0.3, of, notch);
+    } else if (massing !== "round") {
+      band(into, massing, x, z, topW, topD, height - 0.25, 0.7, 0.3, of, notch);
     }
-    const last = into[into.length - 1]!;
-    const topW = last.maxX - last.minX,
-      topD = last.maxZ - last.minZ;
-    if (height > 200 && rand() < 0.55) {
-      const spire = 18 + rand() * 30;
-      roofUnits.push({
-        minX: x - 0.7,
-        maxX: x + 0.7,
-        minZ: z - 0.7,
-        maxZ: z + 0.7,
-        minY: height,
-        maxY: height + spire,
-      });
-      beacons.push({ x, y: height + spire + 0.6, z, phase: rand() });
-    } else if (topW > 10 && topD > 10) {
-      const units = 1 + Math.floor(rand() * 3);
-      for (let k = 0; k < units; k++) {
-        const uw = 3 + rand() * topW * 0.28,
-          ud = 3 + rand() * topD * 0.28;
-        const ux = x + (rand() - 0.5) * (topW - uw - 2),
-          uz = z + (rand() - 0.5) * (topD - ud - 2);
-        roofUnits.push({
+    // Street canopies over some shopfronts.
+    if (of.style !== Style.Stone && massing === "box" && rand() < 0.3)
+      band(into, "box", x, z, w, d, 5.1, 0.28, 1.6, of, 0);
+
+    const spare = limit - height;
+    const size = Math.min(topW, topD);
+    const roll = rand();
+    let crowned = false;
+    if (height > 150 && spare > 60) {
+      crowned = roll < 0.8;
+      if (roll < 0.3) {
+        mast(x, z, height, 20 + rand() * 30);
+      } else if (roll < 0.55) {
+        const h = size * (0.35 + rand() * 0.25);
+        pyramids.push({
+          minX: x - topW * 0.46,
+          maxX: x + topW * 0.46,
+          minZ: z - topD * 0.46,
+          maxZ: z + topD * 0.46,
+          minY: height,
+          maxY: height + h,
+        });
+        mast(x, z, height + h, 6 + rand() * 10);
+      } else if (roll < 0.8) {
+        // A lit glass lantern on top.
+        const h = 7 + rand() * 7;
+        massingBand(
+          into,
+          massing,
+          x,
+          z,
+          topW * 0.7,
+          topD * 0.7,
+          height,
+          height + h,
+          { ...of, style: Style.Glass, lit: 0.95 },
+          notch,
+        );
+        mast(x, z, height + h, 10 + rand() * 14);
+      }
+    }
+    // Plant rooms, penthouses, tanks and antennas on the roofs that are left bare.
+    if (!crowned && topW > 12 && topD > 12) {
+      const count = 1 + Math.floor(rand() * 3);
+      for (let k = 0; k < count; k++) {
+        const uw = 3 + rand() * topW * 0.25,
+          ud = 3 + rand() * topD * 0.25;
+        const ux = x + (rand() - 0.5) * (topW * 0.6 - uw),
+          uz = z + (rand() - 0.5) * (topD * 0.6 - ud);
+        units.push({
           minX: ux - uw / 2,
           maxX: ux + uw / 2,
           minZ: uz - ud / 2,
           maxZ: uz + ud / 2,
           minY: height,
-          maxY: height + 2 + rand() * 3.5,
+          maxY: height + 1.6 + rand() * 3,
         });
       }
+      if (height > 40 && spare > 14 && rand() < 0.45) {
+        const pw = topW * (0.3 + rand() * 0.15),
+          pd = topD * (0.3 + rand() * 0.15);
+        const px = x + (rand() - 0.5) * (topW - pw) * 0.5,
+          pz = z + (rand() - 0.5) * (topD - pd) * 0.5;
+        shell(into, Shape.Box, px, pz, pw, pd, height, height + 4 + rand() * 3, { ...of, style: Style.Grid, lit: 0.2 });
+      }
+      if (height < 70 && spare > 12 && (of.style === Style.Stone || of.style === Style.Grid) && rand() < 0.5)
+        waterTank(x + (rand() - 0.5) * topW * 0.4, z + (rand() - 0.5) * topD * 0.4, height);
+      if (height > 60 && spare > 30 && rand() < 0.3) mast(x + topW * 0.3, z - topD * 0.3, height, 8 + rand() * 12);
     }
     if (height > 110) {
-      for (const [cx, cz] of [
-        [last.minX + 0.6, last.minZ + 0.6],
-        [last.maxX - 0.6, last.maxZ - 0.6],
-      ]) {
-        beacons.push({ x: cx!, y: height + 0.8, z: cz!, phase: rand() });
-      }
+      beacons.push({ x: x - topW * 0.45, y: height + 0.8, z: z - topD * 0.45, phase: rand() });
+      beacons.push({ x: x + topW * 0.45, y: height + 0.8, z: z + topD * 0.45, phase: rand() });
     }
   };
 
   // Landmarks that the course is designed around.
-  const glassy = (options: Partial<Building> = {}) => ({ glass: rand(), lit: 0.3, ...options });
-  const addSpecial = (box: Box, style: Style, options: Partial<Building> = {}) =>
-    specials.push(make(box, style, options));
+  const glassy = (options: Partial<Look> = {}) => look(Style.Glass, { lit: 0.3, ...options });
+  const plain = (x0: number, x1: number, z0: number, z1: number, height: number, of: Look) =>
+    building(specials, (x0 + x1) / 2, (z0 + z1) / 2, x1 - x0, z1 - z0, height, of, { massing: "box", tiers: false });
+  const skyBridge = (x0: number, x1: number, z0: number, z1: number, y0: number, y1: number, of: Look) => {
+    const x = (x0 + x1) / 2,
+      z = (z0 + z1) / 2;
+    shell(specials, Shape.Box, x, z, x1 - x0, z1 - z0, y0, y1, of);
+    band(specials, "box", x, z, x1 - x0, z1 - z0, y1, 0.6, 0.3, of, 0);
+    band(specials, "box", x, z, x1 - x0, z1 - z0, y0 + 0.6, 0.6, 0.3, of, 0);
+  };
   // Harbor Avenue sky bridge with its two anchors.
-  addSpecial({ minX: -52, maxX: -23, minZ: 362, maxZ: 408, minY: 0, maxY: 96 }, Style.Glass, glassy());
-  addSpecial({ minX: 23, maxX: 52, minZ: 362, maxZ: 408, minY: 0, maxY: 104 }, Style.Glass, glassy());
-  addSpecial({ minX: -26, maxX: 26, minZ: 378, maxZ: 392, minY: 44, maxY: 50 }, Style.Ribbon, { lit: 0.9 });
+  plain(-52, -23, 362, 408, 96, glassy());
+  plain(23, 52, 362, 408, 104, glassy());
+  skyBridge(-26, 26, 378, 392, 44, 50, look(Style.Ribbon, { lit: 0.9 }));
   // Meridian Avenue: one bridge to duck under, one to hop over.
-  addSpecial({ minX: 498, maxX: 527, minZ: -300, maxZ: -250, minY: 0, maxY: 132 }, Style.Ribbon);
-  addSpecial({ minX: 573, maxX: 602, minZ: -300, maxZ: -250, minY: 0, maxY: 118 }, Style.Glass, glassy());
-  addSpecial({ minX: 524, maxX: 576, minZ: -282, maxZ: -268, minY: 58, maxY: 64 }, Style.Ribbon, { lit: 0.9 });
-  addSpecial({ minX: 498, maxX: 527, minZ: -410, maxZ: -360, minY: 0, maxY: 78 }, Style.Grid);
-  addSpecial({ minX: 573, maxX: 602, minZ: -410, maxZ: -360, minY: 0, maxY: 84 }, Style.Grid);
-  addSpecial({ minX: 524, maxX: 576, minZ: -392, maxZ: -378, minY: 20, maxY: 26 }, Style.Ribbon, { lit: 0.9 });
+  plain(498, 527, -300, -250, 132, look(Style.Ribbon));
+  plain(573, 602, -300, -250, 118, glassy());
+  skyBridge(524, 576, -282, -268, 58, 64, look(Style.Ribbon, { lit: 0.9 }));
+  plain(498, 527, -410, -360, 78, look(Style.Grid));
+  plain(573, 602, -410, -360, 84, look(Style.Grid));
+  skyBridge(524, 576, -392, -378, 20, 26, look(Style.Ribbon, { lit: 0.9 }));
   // The Sky Gate: twin slabs joined high over Sunset Street.
-  const gateTint = new THREE.Color("#d9d4ca");
-  addSpecial({ minX: 180, maxX: 260, minZ: -632, maxZ: -572, minY: 0, maxY: 152 }, Style.Glass, {
-    tint: gateTint,
-    glass: 0.1,
-    lit: 0.35,
-  });
-  addSpecial({ minX: 180, maxX: 260, minZ: -528, maxZ: -468, minY: 0, maxY: 152 }, Style.Glass, {
-    tint: gateTint,
-    glass: 0.1,
-    lit: 0.35,
-  });
-  addSpecial({ minX: 180, maxX: 260, minZ: -572, maxZ: -528, minY: 56, maxY: 104 }, Style.Ribbon, {
-    tint: gateTint,
-    lit: 0.7,
-  });
-  for (const t of SLALOM_TOWERS) {
-    tower(t.x, t.z, t.size, t.size, t.height, Style.Glass, specials);
-  }
+  const gate = glassy({ tint: new THREE.Color("#d9d4ca"), glass: 0.1, lit: 0.35 });
+  plain(180, 260, -632, -572, 152, gate);
+  plain(180, 260, -528, -468, 152, gate);
+  skyBridge(180, 260, -572, -528, 56, 104, { ...gate, style: Style.Ribbon, lit: 0.7 });
+  const slalomShapes: Massing[] = ["round", "octagon", "cross", "round"];
+  SLALOM_TOWERS.forEach((t, i) =>
+    building(specials, t.x, t.z, t.size, t.size, t.height, glassy(), { massing: slalomShapes[i] }),
+  );
   {
     const { x, z, size, height } = CROWN_TOWER;
-    const crown = make({ minX: 0, maxX: 0, minZ: 0, maxZ: 0, minY: 0, maxY: 0 }, Style.Glass, {
-      tint: new THREE.Color("#c8ccd0"),
-      glass: 0.35,
-      lit: 0.32,
-    });
+    const crown = glassy({ tint: new THREE.Color("#c8ccd0"), glass: 0.35, lit: 0.32 });
     const tiers = [
       [0, 0.55, 1],
       [0.55, 0.8, 0.8],
@@ -353,19 +386,13 @@ export function createCity(course: Course): City {
       [0.93, 1, 0.38],
     ];
     for (const [from, to, scale] of tiers) {
-      const half = (size * scale!) / 2;
-      specials.push({
-        ...crown,
-        minX: x - half,
-        maxX: x + half,
-        minZ: z - half,
-        maxZ: z + half,
-        minY: height * from!,
-        maxY: height * to!,
-      });
+      const s = size * scale!;
+      massingBand(specials, "cross", x, z, s, s, height * from!, height * to!, crown, 0.14);
+      band(specials, "cross", x, z, s, s, height * to! - 0.2, 1.2, 0.6, crown, 0.14);
     }
-    roofUnits.push({ minX: x - 1, maxX: x + 1, minZ: z - 1, maxZ: z + 1, minY: height, maxY: height + 46 });
-    beacons.push({ x, y: height + 46.8, z, phase: 0 });
+    const s = size * 0.3;
+    massingBand(specials, "box", x, z, s, s, height, height + 10, { ...crown, lit: 1 }, 0);
+    mast(x, z, height + 10, 36);
     for (const [dx, dz] of [
       [-1, -1],
       [1, -1],
@@ -392,13 +419,13 @@ export function createCity(course: Course): City {
       const far = falloff < 0.35;
       const blockHeight = 12 + 34 * falloff + 230 * core + 150 * east + 70 * harbor + 45 * near;
       const half = BLOCK_HALF - SETBACK;
-      const lots: { x: number; z: number; w: number; d: number; h: number }[] = [];
+      const lots: { x: number; z: number; w: number; d: number; h: number; podium?: boolean }[] = [];
       const h = blockHeight * (0.45 + rand() * 0.9) * (rand() < 0.04 ? 1.8 : 1);
       if (h > 110 && rand() < 0.8) {
         // Tower on a podium.
         const w = 30 + rand() * 20,
           d = 30 + rand() * 20;
-        lots.push({ x: cx, z: cz, w: half * 2, d: half * 2, h: 9 + rand() * 8 });
+        lots.push({ x: cx, z: cz, w: half * 2, d: half * 2, h: 9 + rand() * 8, podium: true });
         lots.push({
           x: cx + (rand() - 0.5) * (half * 2 - w - 4),
           z: cz + (rand() - 0.5) * (half * 2 - d - 4),
@@ -452,68 +479,131 @@ export function createCity(course: Course): City {
           maxY: lot.h,
         };
         if (blocked(box)) continue;
-        const height = Math.min(lot.h, heightLimit(box));
+        const limit = heightLimit(box);
+        const height = Math.min(lot.h, limit);
         if (height < 7) continue;
-        tower(lot.x, lot.z, lot.w, lot.d, height, chooseStyle(height), buildings);
+        const style = lot.podium ? (rand() < 0.5 ? Style.Grid : Style.Stone) : chooseStyle(height);
+        building(parts, lot.x, lot.z, lot.w, lot.d, height, look(style), {
+          limit,
+          massing: lot.podium ? "box" : undefined,
+        });
       }
     }
   }
 
-  const all = [...specials, ...buildings];
+  const all = [...specials, ...parts];
   const group = new THREE.Group();
   const glow = { value: 0.55 };
-  const boxGeometry = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
-  const mesh = new THREE.InstancedMesh(boxGeometry, buildingMaterial(glow), all.length);
-  const styles = new Float32Array(all.length * 4);
-  const tints = new Float32Array(all.length * 3);
+  const disposables: { dispose(): void }[] = [];
+  const track = <T extends { dispose(): void }>(item: T) => (disposables.push(item), item);
   const matrix = new THREE.Matrix4();
   const position = new THREE.Vector3();
   const scale = new THREE.Vector3();
   const identity = new THREE.Quaternion();
-  all.forEach((b, i) => {
+  const place = (b: Box) => {
     position.set((b.minX + b.maxX) / 2, b.minY, (b.minZ + b.maxZ) / 2);
     scale.set(b.maxX - b.minX, b.maxY - b.minY, b.maxZ - b.minZ);
-    mesh.setMatrixAt(i, matrix.compose(position, identity, scale));
-    styles.set([b.seed, b.style, b.lit, b.glass], i * 4);
-    tints.set([b.tint.r, b.tint.g, b.tint.b], i * 3);
-  });
-  boxGeometry.setAttribute("aStyle", new THREE.InstancedBufferAttribute(styles, 4));
-  boxGeometry.setAttribute("aTint", new THREE.InstancedBufferAttribute(tints, 3));
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  mesh.computeBoundingSphere();
-  group.add(mesh);
+    return matrix.compose(position, identity, scale);
+  };
 
-  const unitGeometry = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
-  const units = new THREE.InstancedMesh(
-    unitGeometry,
-    new THREE.MeshStandardMaterial({ roughness: 0.55, metalness: 0.35 }),
-    roofUnits.length,
+  // Building shells: one instanced mesh per cross-section.
+  const flatFacade = track(facadeMaterial(glow));
+  const roundFacade = track(facadeMaterial(glow, true));
+  const octagon = new THREE.CylinderGeometry(0.5, 0.5, 1, 8, 1).rotateY(Math.PI / 8).toNonIndexed();
+  octagon.computeVertexNormals();
+  const shapes: [Shape, THREE.BufferGeometry, THREE.Material][] = [
+    [Shape.Box, new THREE.BoxGeometry(1, 1, 1), flatFacade],
+    [Shape.Octagon, octagon, flatFacade],
+    [Shape.Round, new THREE.CylinderGeometry(0.5, 0.5, 1, 48, 1), roundFacade],
+  ];
+  for (const [shape, geometry, material] of shapes) {
+    const list = all.filter((p) => p.shape === shape);
+    geometry.translate(0, 0.5, 0);
+    track(geometry);
+    const mesh = track(new THREE.InstancedMesh(geometry, material, list.length));
+    const styles = new Float32Array(list.length * 4);
+    const tints = new Float32Array(list.length * 3);
+    list.forEach((b, i) => {
+      mesh.setMatrixAt(i, place(b));
+      styles.set([b.seed, b.style, b.lit, b.glass], i * 4);
+      tints.set([b.tint.r, b.tint.g, b.tint.b], i * 3);
+    });
+    geometry.setAttribute("aStyle", new THREE.InstancedBufferAttribute(styles, 4));
+    geometry.setAttribute("aTint", new THREE.InstancedBufferAttribute(tints, 3));
+    mesh.castShadow = mesh.receiveShadow = true;
+    mesh.computeBoundingSphere();
+    group.add(mesh);
+  }
+
+  // Rooftop plant, masts and tank legs.
+  const unitMesh = track(
+    new THREE.InstancedMesh(
+      track(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0)),
+      track(new THREE.MeshStandardMaterial({ roughness: 0.55, metalness: 0.35 })),
+      units.length,
+    ),
   );
   const unitColors = ["#7d8286", "#9aa0a4", "#5c6064", "#b4b2ac"].map((c) => new THREE.Color(c));
-  roofUnits.forEach((b, i) => {
-    position.set((b.minX + b.maxX) / 2, b.minY, (b.minZ + b.maxZ) / 2);
-    scale.set(b.maxX - b.minX, b.maxY - b.minY, b.maxZ - b.minZ);
-    units.setMatrixAt(i, matrix.compose(position, identity, scale));
-    units.setColorAt(i, unitColors[i % unitColors.length]!);
+  units.forEach((b, i) => {
+    unitMesh.setMatrixAt(i, place(b));
+    unitMesh.setColorAt(i, unitColors[i % unitColors.length]!);
   });
-  units.castShadow = true;
-  units.receiveShadow = true;
-  units.computeBoundingSphere();
-  group.add(units);
+
+  // Timber water tanks with conical lids.
+  const tankMesh = track(
+    new THREE.InstancedMesh(
+      track(new THREE.CylinderGeometry(1, 1, 1, 14, 1).translate(0, 0.5, 0)),
+      track(new THREE.MeshStandardMaterial({ color: 0x6b4a33, roughness: 0.9 })),
+      tanks.length,
+    ),
+  );
+  const lidMesh = track(
+    new THREE.InstancedMesh(
+      track(new THREE.ConeGeometry(1.08, 1, 14, 1).translate(0, 0.5, 0)),
+      track(new THREE.MeshStandardMaterial({ color: 0x3b3d3f, roughness: 0.6, metalness: 0.4 })),
+      tanks.length,
+    ),
+  );
+  tanks.forEach((t, i) => {
+    tankMesh.setMatrixAt(i, matrix.compose(position.set(t.x, t.y, t.z), identity, scale.set(t.r, t.h, t.r)));
+    lidMesh.setMatrixAt(i, matrix.compose(position.set(t.x, t.y + t.h, t.z), identity, scale.set(t.r, t.r * 0.6, t.r)));
+  });
+
+  // Pyramid crowns in weathered copper and dark metal.
+  const pyramidMesh = track(
+    new THREE.InstancedMesh(
+      track(new THREE.ConeGeometry(Math.SQRT1_2, 1, 4, 1).rotateY(Math.PI / 4).translate(0, 0.5, 0)),
+      track(new THREE.MeshStandardMaterial({ roughness: 0.35, metalness: 0.8, flatShading: true })),
+      pyramids.length,
+    ),
+  );
+  const crownColors = ["#5f8f80", "#3a3f45", "#b89a6a", "#8a9aa3"].map((c) => new THREE.Color(c));
+  pyramids.forEach((b, i) => {
+    pyramidMesh.setMatrixAt(i, place(b));
+    pyramidMesh.setColorAt(i, crownColors[i % crownColors.length]!);
+  });
+
+  for (const mesh of [unitMesh, tankMesh, lidMesh, pyramidMesh]) {
+    mesh.castShadow = mesh.receiveShadow = true;
+    mesh.computeBoundingSphere();
+    group.add(mesh);
+  }
 
   return {
     group,
-    solids: all.map(({ minX, minY, minZ, maxX, maxY, maxZ }) => ({ minX, minY, minZ, maxX, maxY, maxZ })),
+    solids: [...all, ...pyramids].map(({ minX, minY, minZ, maxX, maxY, maxZ, radius }) => ({
+      minX,
+      minY,
+      minZ,
+      maxX,
+      maxY,
+      maxZ,
+      radius,
+    })),
     beacons,
     windowGlow: glow,
     dispose() {
-      boxGeometry.dispose();
-      unitGeometry.dispose();
-      mesh.material.dispose();
-      units.material.dispose();
-      mesh.dispose();
-      units.dispose();
+      for (const item of disposables) item.dispose();
     },
   };
 }
@@ -551,10 +641,11 @@ export class SolidIndex {
         for (const box of this.cells.get(SolidIndex.key(i, j)) ?? []) {
           if (seen.has(box)) continue;
           seen.add(box);
-          const dx = Math.max(box.minX - p.x, 0, p.x - box.maxX);
           const dy = Math.max(box.minY - p.y, 0, p.y - box.maxY);
-          const dz = Math.max(box.minZ - p.z, 0, p.z - box.maxZ);
-          best = Math.min(best, Math.hypot(dx, dy, dz));
+          const horizontal = box.radius
+            ? Math.max(0, Math.hypot(p.x - (box.minX + box.maxX) / 2, p.z - (box.minZ + box.maxZ) / 2) - box.radius)
+            : Math.hypot(Math.max(box.minX - p.x, 0, p.x - box.maxX), Math.max(box.minZ - p.z, 0, p.z - box.maxZ));
+          best = Math.min(best, Math.hypot(horizontal, dy));
         }
       }
     }
