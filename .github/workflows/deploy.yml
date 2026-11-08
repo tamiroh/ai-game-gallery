@@ -15,6 +15,28 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  git-footprint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version: "1.26.x"
+          cache: false
+      - name: Install git-footprint
+        run: go install github.com/tamiroh/git-footprint@latest
+      - name: Check repository footprint
+        run: |
+          git footprint --no-color --no-pager --fail-on info \
+            --allow-identity 'tamiroh <tamiroh71@gmail.com>' \
+            --allow-identity 'GitHub <noreply@github.com>'
+
   check:
     runs-on: ubuntu-latest
     steps:
@@ -27,7 +49,7 @@ jobs:
       - run: npm run check
 
   build:
-    needs: check
+    needs: [git-footprint, check]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
